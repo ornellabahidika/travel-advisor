@@ -154,7 +154,9 @@ function SignInView({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t("auth.emailPlaceholder")}
-            className={textFieldCls}
+            className={`${textFieldCls} ph-no-capture`}
+            data-ph-no-capture
+            autoComplete="email"
             required
           />
         </LabeledInput>
@@ -166,7 +168,9 @@ function SignInView({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("auth.password")}
-              className={`${textFieldCls} pr-10`}
+              className={`${textFieldCls} pr-10 ph-no-capture`}
+              data-ph-no-capture
+              autoComplete="current-password"
               required
             />
             <button
@@ -277,7 +281,9 @@ function JoinView({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t("auth.emailPlaceholder")}
-            className={textFieldCls}
+            className={`${textFieldCls} ph-no-capture`}
+            data-ph-no-capture
+            autoComplete="email"
             required
           />
         </LabeledInput>
@@ -289,7 +295,9 @@ function JoinView({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("auth.password")}
-              className={`${textFieldCls} pr-10`}
+              className={`${textFieldCls} pr-10 ph-no-capture`}
+              data-ph-no-capture
+              autoComplete="new-password"
               required
               minLength={6}
             />

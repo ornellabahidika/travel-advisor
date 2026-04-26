@@ -14,6 +14,11 @@ export function initAnalytics() {
     capture_pageleave: true,
     person_profiles: "identified_only",
     autocapture: true,
+    session_recording: {
+      maskAllInputs: false,
+      maskInputOptions: { password: true },
+      maskTextSelector: "[data-ph-no-capture]",
+    },
   });
   initialized = true;
 }
