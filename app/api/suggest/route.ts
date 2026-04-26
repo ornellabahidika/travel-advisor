@@ -4,6 +4,7 @@ import { tavily } from "@tavily/core";
 import { z } from "zod";
 import { buildSearchQueries } from "@/lib/queries";
 import { isMockMode, mockDelay, mockSuggest } from "@/lib/mocks";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { TravelInputSchema, type Destination, type SuggestResponse } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -72,6 +73,17 @@ const SuggestSchema = z.object({
 });
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = rateLimit(`suggest:${clientIp(req)}`, 5, 60_000);
+  if (!rl.ok) {
+    return Response.json(
+      {
+        ok: false,
+        error: "Too many searches — please wait a minute and try again.",
+      } satisfies SuggestResponse,
+      { status: 429 },
+    );
+  }
+
   let input;
   try {
     const body = await req.json();

@@ -13,6 +13,7 @@ import {
   mockTransportation,
   mockTripDetails,
 } from "@/lib/mocks";
+import { clientIp, rateLimit } from "@/lib/rateLimit";
 import {
   TripDetailsInputSchema,
   type TripDetails,
@@ -151,6 +152,17 @@ function hotelSearchUrl(name: string, dest: string, start: string, end: string):
 }
 
 export async function POST(req: Request): Promise<Response> {
+  const rl = rateLimit(`trip:${clientIp(req)}`, 10, 60_000);
+  if (!rl.ok) {
+    return Response.json(
+      {
+        ok: false,
+        error: "Too many trip plans — please wait a minute and try again.",
+      } satisfies TripDetailsResponse,
+      { status: 429 },
+    );
+  }
+
   let input;
   try {
     input = TripDetailsInputSchema.parse(await req.json());
