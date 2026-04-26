@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -61,6 +61,7 @@ import type {
 import { useT } from "@/lib/language";
 import { track } from "@/lib/analytics";
 import { destinationKey, useHostedTrips } from "@/lib/hostedTrips";
+import { useChat } from "@/lib/chats";
 
 const THEME_EMOJI: { keywords: string[]; emoji: string }[] = [
   { keywords: ["beach", "coast", "ocean", "sea", "island"], emoji: "🏖️" },
@@ -1430,6 +1431,7 @@ function RequestsModal({
   onDeny: (requestId: string) => void;
 }) {
   const { t } = useT();
+  const [chatTarget, setChatTarget] = useState<JoinRequest | null>(null);
   const pending = trip.requests.filter((r) => r.status === "pending").length;
   const accepted = trip.requests.filter((r) => r.status === "accepted").length;
 
@@ -1439,102 +1441,230 @@ function RequestsModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="relative flex h-[80vh] max-h-[600px] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          className="absolute right-4 top-4 z-10 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           aria-label="Close"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <div className="border-b border-slate-200 px-6 py-5">
-          <h3 className="text-xl font-black text-slate-900">{t("host.requestsTitle")}</h3>
-          <p className="mt-0.5 text-sm text-slate-500">
-            {t("host.requestsSubtitle", { pending, accepted })}
-          </p>
-        </div>
+        {chatTarget ? (
+          <ChatView
+            tripId={trip.tripId}
+            request={chatTarget}
+            onBack={() => setChatTarget(null)}
+          />
+        ) : (
+          <>
+            <div className="border-b border-slate-200 px-6 py-5">
+              <h3 className="text-xl font-black text-slate-900">
+                {t("host.requestsTitle")}
+              </h3>
+              <p className="mt-0.5 text-sm text-slate-500">
+                {t("host.requestsSubtitle", { pending, accepted })}
+              </p>
+            </div>
 
-        <div className="max-h-[60vh] overflow-y-auto px-6 py-4">
-          {trip.requests.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-500">
-              {t("host.requestsEmpty")}
-            </p>
-          ) : (
-            <ul className="space-y-4">
-              {trip.requests.map((r) => {
-                const initials = r.requesterName
-                  .split(/\s+/)
-                  .map((p) => p[0])
-                  .slice(0, 2)
-                  .join("")
-                  .toUpperCase();
-                const ago =
-                  r.daysAgo === 0
-                    ? t("time.justNow")
-                    : t("time.daysAgo", { n: r.daysAgo });
-                return (
-                  <li
-                    key={r.id}
-                    className="rounded-xl border border-slate-200 bg-white p-4"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">
-                        {initials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <div className="truncate font-bold text-slate-900">
-                            {r.requesterName}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              {trip.requests.length === 0 ? (
+                <p className="py-8 text-center text-sm text-slate-500">
+                  {t("host.requestsEmpty")}
+                </p>
+              ) : (
+                <ul className="space-y-4">
+                  {trip.requests.map((r) => {
+                    const initials = r.requesterName
+                      .split(/\s+/)
+                      .map((p) => p[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase();
+                    const ago =
+                      r.daysAgo === 0
+                        ? t("time.justNow")
+                        : t("time.daysAgo", { n: r.daysAgo });
+                    return (
+                      <li
+                        key={r.id}
+                        className="rounded-xl border border-slate-200 bg-white p-4"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">
+                            {initials}
                           </div>
-                          <div className="shrink-0 text-xs text-slate-500">{ago}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <div className="truncate font-bold text-slate-900">
+                                {r.requesterName}
+                              </div>
+                              <div className="shrink-0 text-xs text-slate-500">{ago}</div>
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              from {r.requesterOrigin}
+                            </div>
+                            <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                              {r.message}
+                            </p>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              {r.status === "pending" && (
+                                <>
+                                  <button
+                                    onClick={() => onAccept(r.id)}
+                                    className="rounded-full bg-[#34e0a1] px-4 py-1.5 text-xs font-black text-slate-900 hover:bg-[#2ccb91]"
+                                  >
+                                    ✓ {t("host.accept")}
+                                  </button>
+                                  <button
+                                    onClick={() => onDeny(r.id)}
+                                    className="rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-900"
+                                  >
+                                    {t("host.decline")}
+                                  </button>
+                                </>
+                              )}
+                              {r.status === "accepted" && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-[#e0f7ec] px-3 py-1 text-[11px] font-bold text-[#004f32]">
+                                  ✓ {t("host.accepted")}
+                                </span>
+                              )}
+                              {r.status === "denied" && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-600">
+                                  {t("host.declined")}
+                                </span>
+                              )}
+                              {r.status !== "denied" && (
+                                <button
+                                  onClick={() => setChatTarget(r)}
+                                  className="ml-auto inline-flex items-center gap-1 rounded-full border border-slate-900 bg-white px-3 py-1.5 text-xs font-bold text-slate-900 hover:bg-slate-900 hover:text-white"
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  {t("chat.open")}
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-xs text-slate-500">
-                          from {r.requesterOrigin}
-                        </div>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-700">
-                          {r.message}
-                        </p>
-                        <div className="mt-3 flex items-center gap-2">
-                          {r.status === "pending" && (
-                            <>
-                              <button
-                                onClick={() => onAccept(r.id)}
-                                className="rounded-full bg-[#34e0a1] px-4 py-1.5 text-xs font-black text-slate-900 hover:bg-[#2ccb91]"
-                              >
-                                ✓ {t("host.accept")}
-                              </button>
-                              <button
-                                onClick={() => onDeny(r.id)}
-                                className="rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-900"
-                              >
-                                {t("host.decline")}
-                              </button>
-                            </>
-                          )}
-                          {r.status === "accepted" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#e0f7ec] px-3 py-1 text-[11px] font-bold text-[#004f32]">
-                              ✓ {t("host.accepted")}
-                            </span>
-                          )}
-                          {r.status === "denied" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-600">
-                              {t("host.declined")}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
+  );
+}
+
+function ChatView({
+  tripId,
+  request,
+  onBack,
+}: {
+  tripId: string;
+  request: JoinRequest;
+  onBack: () => void;
+}) {
+  const { t } = useT();
+  const { messages, sendMessage } = useChat(tripId, request.id);
+  const [draft, setDraft] = useState("");
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const initials = request.requesterName
+    .split(/\s+/)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages.length]);
+
+  const handleSend = () => {
+    const trimmed = draft.trim();
+    if (!trimmed) return;
+    sendMessage(trimmed);
+    setDraft("");
+  };
+
+  return (
+    <>
+      <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
+        <button
+          onClick={onBack}
+          aria-label={t("chat.back")}
+          className="rounded-full p-1 text-slate-700 hover:bg-slate-100"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">
+          {initials}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-bold text-slate-900">{request.requesterName}</div>
+          <div className="text-xs text-slate-500">from {request.requesterOrigin}</div>
+        </div>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-5 py-4">
+        {messages.length === 0 ? (
+          <div className="flex h-full items-center justify-center text-sm text-slate-500">
+            {t("chat.empty")}
+          </div>
+        ) : (
+          messages.map((m) => (
+            <div
+              key={m.id}
+              className={`flex ${m.sender === "host" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
+                  m.sender === "host"
+                    ? "bg-[#34e0a1] text-slate-900"
+                    : "bg-white text-slate-900 shadow-sm border border-slate-200"
+                }`}
+              >
+                {m.body}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="border-t border-slate-200 bg-white p-3">
+        <div className="text-center text-[10px] text-slate-400">{t("chat.subtitle")}</div>
+        <div className="mt-2 flex items-end gap-2">
+          <textarea
+            rows={1}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder={t("chat.placeholder")}
+            className="flex-1 resize-none rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm focus:border-[#00aa6c] focus:outline-none focus:ring-1 focus:ring-[#00aa6c]"
+          />
+          <button
+            onClick={handleSend}
+            disabled={draft.trim().length === 0}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#34e0a1] text-slate-900 hover:bg-[#2ccb91] disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={t("chat.send")}
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 

@@ -88,6 +88,13 @@ export type ItineraryDay = {
 
 export type JoinRequestStatus = "pending" | "accepted" | "denied";
 
+export type ChatMessage = {
+  id: string;
+  sender: "host" | "requester";
+  body: string;
+  timestamp: number;
+};
+
 export type JoinRequest = {
   id: string;
   requesterName: string;
