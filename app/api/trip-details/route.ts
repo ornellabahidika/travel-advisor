@@ -276,7 +276,7 @@ export async function POST(req: Request): Promise<Response> {
   const anthropic = new Anthropic();
 
   const corePromise = anthropic.messages.parse({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5",
     max_tokens: 8000,
     thinking: { type: "adaptive" },
     output_config: { format: zodOutputFormat(CoreSchema), effort: "medium" },
@@ -287,7 +287,7 @@ export async function POST(req: Request): Promise<Response> {
   });
 
   const itineraryPromise = anthropic.messages.parse({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5",
     max_tokens: 8000,
     thinking: { type: "adaptive" },
     output_config: {
@@ -301,7 +301,7 @@ export async function POST(req: Request): Promise<Response> {
   });
 
   const groupTripsPromise = anthropic.messages.parse({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5",
     max_tokens: 3000,
     thinking: { type: "adaptive" },
     output_config: {
