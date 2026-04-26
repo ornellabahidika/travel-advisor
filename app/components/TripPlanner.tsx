@@ -47,6 +47,7 @@ import type {
   BudgetBreakdown,
   BudgetCategory,
   GroupTrip,
+  JoinRequest,
   LocalEvent,
   Review,
   ReviewSummary as ReviewSummaryType,
@@ -94,7 +95,12 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
   const [showRestaurants, setShowRestaurants] = useState(false);
   const [showHostModal, setShowHostModal] = useState(false);
   const destKey = destinationKey(input.name, input.country);
-  const { hosted, addHosted, removeHosted } = useHostedTrips(destKey);
+  const { hosted, addHosted, removeHosted, updateRequest } = useHostedTrips(destKey);
+  const [requestsTarget, setRequestsTarget] = useState<{
+    tripId: string;
+    hostName: string;
+    requests: JoinRequest[];
+  } | null>(null);
 
   useEffect(() => {
     if (!details) return;
@@ -643,6 +649,14 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
                   onJoin={() => undefined}
                   hostedByMe
                   onDelete={() => removeHosted(g.id)}
+                  pendingRequests={g.requests.filter((r) => r.status === "pending").length}
+                  onViewRequests={() =>
+                    setRequestsTarget({
+                      tripId: g.id,
+                      hostName: g.hostName,
+                      requests: g.requests,
+                    })
+                  }
                 />
               ))}
               {details.groupTrips.map((g) => (
@@ -679,6 +693,39 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
 
       {joinTarget && (
         <JoinModal group={joinTarget} onClose={() => setJoinTarget(null)} />
+      )}
+
+      {requestsTarget && (
+        <RequestsModal
+          trip={requestsTarget}
+          onClose={() => setRequestsTarget(null)}
+          onAccept={(rid) => {
+            updateRequest(requestsTarget.tripId, rid, "accepted");
+            setRequestsTarget((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    requests: prev.requests.map((r) =>
+                      r.id === rid ? { ...r, status: "accepted" } : r,
+                    ),
+                  }
+                : prev,
+            );
+          }}
+          onDeny={(rid) => {
+            updateRequest(requestsTarget.tripId, rid, "denied");
+            setRequestsTarget((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    requests: prev.requests.map((r) =>
+                      r.id === rid ? { ...r, status: "denied" } : r,
+                    ),
+                  }
+                : prev,
+            );
+          }}
+        />
       )}
 
       {showHostModal && (
@@ -1257,11 +1304,15 @@ function GroupTripCard({
   onJoin,
   hostedByMe,
   onDelete,
+  pendingRequests,
+  onViewRequests,
 }: {
   group: GroupTrip;
   onJoin: () => void;
   hostedByMe?: boolean;
   onDelete?: () => void;
+  pendingRequests?: number;
+  onViewRequests?: () => void;
 }) {
   const { t } = useT();
   const spotsLeft = group.capacity - group.travelersCount;
@@ -1326,17 +1377,30 @@ function GroupTripCard({
       </div>
 
       {hostedByMe ? (
-        <div className="mt-1 flex items-center gap-2">
-          <span className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-black text-white">
-            ✓ {t("host.hostedByYou")}
-          </span>
-          {onDelete && (
+        <div className="mt-1 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-slate-900 px-4 py-2.5 text-sm font-black text-white">
+              ✓ {t("host.hostedByYou")}
+            </span>
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                aria-label={t("host.delete")}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 hover:border-rose-500 hover:bg-rose-50 hover:text-rose-600"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {onViewRequests && (
             <button
-              onClick={onDelete}
-              aria-label={t("host.delete")}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 hover:border-rose-500 hover:bg-rose-50 hover:text-rose-600"
+              onClick={onViewRequests}
+              className="flex w-full items-center justify-center gap-1.5 rounded-full border border-[#34e0a1] bg-[#e0f7ec] px-4 py-2 text-sm font-bold text-[#004f32] hover:bg-[#34e0a1]/30"
             >
-              <Trash2 className="h-4 w-4" />
+              <Users className="h-4 w-4" />
+              {pendingRequests && pendingRequests > 0
+                ? `${t("host.viewRequests", { n: pendingRequests })}`
+                : t("host.requestsTitle")}
             </button>
           )}
         </div>
@@ -1350,6 +1414,126 @@ function GroupTripCard({
           {t("trip.requestJoin")}
         </button>
       )}
+    </div>
+  );
+}
+
+function RequestsModal({
+  trip,
+  onClose,
+  onAccept,
+  onDeny,
+}: {
+  trip: { tripId: string; hostName: string; requests: JoinRequest[] };
+  onClose: () => void;
+  onAccept: (requestId: string) => void;
+  onDeny: (requestId: string) => void;
+}) {
+  const { t } = useT();
+  const pending = trip.requests.filter((r) => r.status === "pending").length;
+  const accepted = trip.requests.filter((r) => r.status === "accepted").length;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <div className="border-b border-slate-200 px-6 py-5">
+          <h3 className="text-xl font-black text-slate-900">{t("host.requestsTitle")}</h3>
+          <p className="mt-0.5 text-sm text-slate-500">
+            {t("host.requestsSubtitle", { pending, accepted })}
+          </p>
+        </div>
+
+        <div className="max-h-[60vh] overflow-y-auto px-6 py-4">
+          {trip.requests.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-500">
+              {t("host.requestsEmpty")}
+            </p>
+          ) : (
+            <ul className="space-y-4">
+              {trip.requests.map((r) => {
+                const initials = r.requesterName
+                  .split(/\s+/)
+                  .map((p) => p[0])
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase();
+                const ago =
+                  r.daysAgo === 0
+                    ? t("time.justNow")
+                    : t("time.daysAgo", { n: r.daysAgo });
+                return (
+                  <li
+                    key={r.id}
+                    className="rounded-xl border border-slate-200 bg-white p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">
+                        {initials}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <div className="truncate font-bold text-slate-900">
+                            {r.requesterName}
+                          </div>
+                          <div className="shrink-0 text-xs text-slate-500">{ago}</div>
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          from {r.requesterOrigin}
+                        </div>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                          {r.message}
+                        </p>
+                        <div className="mt-3 flex items-center gap-2">
+                          {r.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() => onAccept(r.id)}
+                                className="rounded-full bg-[#34e0a1] px-4 py-1.5 text-xs font-black text-slate-900 hover:bg-[#2ccb91]"
+                              >
+                                ✓ {t("host.accept")}
+                              </button>
+                              <button
+                                onClick={() => onDeny(r.id)}
+                                className="rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 hover:border-slate-900"
+                              >
+                                {t("host.decline")}
+                              </button>
+                            </>
+                          )}
+                          {r.status === "accepted" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#e0f7ec] px-3 py-1 text-[11px] font-bold text-[#004f32]">
+                              ✓ {t("host.accepted")}
+                            </span>
+                          )}
+                          {r.status === "denied" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-bold text-slate-600">
+                              {t("host.declined")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1376,11 +1560,13 @@ function HostTripModal({
   const [blurb, setBlurb] = useState("");
   const [done, setDone] = useState(false);
 
+  const blurbMin = 10;
+  const blurbLen = blurb.trim().length;
   const valid =
     name.trim().length > 0 &&
     origin.trim().length > 0 &&
     vibe.trim().length > 0 &&
-    blurb.trim().length >= 20 &&
+    blurbLen >= blurbMin &&
     capacity >= 1 &&
     capacity <= 10;
 
@@ -1543,6 +1729,15 @@ function HostTripModal({
                     placeholder={t("host.blurbPlaceholder")}
                     className={hostInputCls}
                   />
+                  <div
+                    className={`mt-1 text-right text-[11px] ${
+                      blurbLen >= blurbMin ? "text-slate-400" : "text-amber-700"
+                    }`}
+                  >
+                    {blurbLen < blurbMin
+                      ? `${blurbMin - blurbLen} more characters`
+                      : `${blurbLen} characters`}
+                  </div>
                 </HostField>
               </div>
             </div>

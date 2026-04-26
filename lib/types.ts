@@ -86,6 +86,17 @@ export type ItineraryDay = {
   activities: Activity[];
 };
 
+export type JoinRequestStatus = "pending" | "accepted" | "denied";
+
+export type JoinRequest = {
+  id: string;
+  requesterName: string;
+  requesterOrigin: string;
+  message: string;
+  daysAgo: number;
+  status: JoinRequestStatus;
+};
+
 export type GroupTrip = {
   id: string;
   hostName: string;
