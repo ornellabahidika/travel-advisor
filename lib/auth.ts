@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { identify, reset, track } from "./analytics";
+import { mergeGuestInto } from "./recents";
 
 export type AuthUser = {
   id: string;
@@ -67,6 +68,7 @@ export function useAuth() {
       createdAt: Date.now(),
     };
     write(u);
+    mergeGuestInto(u.id);
     identify(u.id, { email: u.email, name: u.name, provider: u.provider });
     track("signed_in", { provider: "google" });
   };
@@ -80,6 +82,7 @@ export function useAuth() {
       createdAt: Date.now(),
     };
     write(u);
+    mergeGuestInto(u.id);
     identify(u.id, { email: u.email, name: u.name, provider: u.provider });
     track("signed_in", { provider: "email", flow: "join" });
   };
@@ -94,6 +97,7 @@ export function useAuth() {
       createdAt: Date.now(),
     };
     write(u);
+    mergeGuestInto(u.id);
     identify(u.id, { email: u.email, name: u.name, provider: u.provider });
     track("signed_in", { provider: "email", flow: "signin" });
   };

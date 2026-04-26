@@ -20,6 +20,7 @@ import { useT } from "@/lib/language";
 import { track } from "@/lib/analytics";
 import { VibeComboBox } from "./VibeComboBox";
 import { Autocomplete } from "./Autocomplete";
+import { ContinueSection } from "./ContinueSection";
 import { POPULAR_LOCATIONS, CITIES_ONLY, COUNTRIES } from "@/lib/locations";
 import type { TKey } from "@/lib/translations";
 
@@ -448,6 +449,7 @@ export function Advisor() {
 
       {/* Content below search */}
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
+        <ContinueSection />
         {error && (
           <div className="mb-6 rounded border border-red-200 bg-red-50 p-4 text-sm text-red-900">
             <strong>Error:</strong> {error}

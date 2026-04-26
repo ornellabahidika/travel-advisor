@@ -62,6 +62,7 @@ import { useT } from "@/lib/language";
 import { track } from "@/lib/analytics";
 import { destinationKey, useHostedTrips } from "@/lib/hostedTrips";
 import { useGroupChat, type ChatParticipant } from "@/lib/chats";
+import { recordRecentTrip } from "@/lib/recents";
 
 const THEME_EMOJI: { keywords: string[]; emoji: string }[] = [
   { keywords: ["beach", "coast", "ocean", "sea", "island"], emoji: "🏖️" },
@@ -130,6 +131,19 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
       travelers: input.travelers,
       budget: input.budget,
       currency: input.currency,
+    });
+    recordRecentTrip({
+      name: input.name,
+      country: input.country,
+      origin: input.origin,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      budget: input.budget,
+      currency: input.currency,
+      travelers: input.travelers,
+      interests: input.interests.join(","),
+      constraints: input.constraints,
+      vibe: input.vibe,
     });
     const startedAt = Date.now();
     (async () => {
