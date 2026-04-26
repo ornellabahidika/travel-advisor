@@ -278,8 +278,7 @@ export async function POST(req: Request): Promise<Response> {
   const corePromise = anthropic.messages.parse({
     model: "claude-haiku-4-5",
     max_tokens: 8000,
-    thinking: { type: "adaptive" },
-    output_config: { format: zodOutputFormat(CoreSchema), effort: "medium" },
+    output_config: { format: zodOutputFormat(CoreSchema) },
     system: [
       { type: "text", text: CORE_PROMPT, cache_control: { type: "ephemeral" } },
     ],
@@ -289,11 +288,7 @@ export async function POST(req: Request): Promise<Response> {
   const itineraryPromise = anthropic.messages.parse({
     model: "claude-haiku-4-5",
     max_tokens: 8000,
-    thinking: { type: "adaptive" },
-    output_config: {
-      format: zodOutputFormat(ItineraryOutputSchema),
-      effort: "medium",
-    },
+    output_config: { format: zodOutputFormat(ItineraryOutputSchema) },
     system: [
       { type: "text", text: ITINERARY_PROMPT, cache_control: { type: "ephemeral" } },
     ],
@@ -303,11 +298,7 @@ export async function POST(req: Request): Promise<Response> {
   const groupTripsPromise = anthropic.messages.parse({
     model: "claude-haiku-4-5",
     max_tokens: 3000,
-    thinking: { type: "adaptive" },
-    output_config: {
-      format: zodOutputFormat(GroupTripsOutputSchema),
-      effort: "low",
-    },
+    output_config: { format: zodOutputFormat(GroupTripsOutputSchema) },
     system: [
       { type: "text", text: GROUP_TRIPS_PROMPT, cache_control: { type: "ephemeral" } },
     ],

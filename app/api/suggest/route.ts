@@ -205,10 +205,8 @@ export async function POST(req: Request): Promise<Response> {
     const response = await anthropic.messages.parse({
       model: "claude-haiku-4-5",
       max_tokens: 12000,
-      thinking: { type: "adaptive" },
       output_config: {
         format: zodOutputFormat(SuggestSchema),
-        effort: "medium",
       },
       system: [
         {
