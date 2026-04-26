@@ -110,6 +110,9 @@ export type TKey =
   | "host.accepted"
   | "host.declined"
   | "chat.open"
+  | "chat.openGroup"
+  | "chat.groupTitle"
+  | "chat.participants"
   | "chat.title"
   | "chat.subtitle"
   | "chat.placeholder"
@@ -453,6 +456,9 @@ const en: Dict = {
   "host.accepted": "Accepted",
   "host.declined": "Declined",
   "chat.open": "Chat",
+  "chat.openGroup": "Open group chat",
+  "chat.groupTitle": "Group chat",
+  "chat.participants": "{n} participants",
   "chat.title": "Chat with {name}",
   "chat.subtitle": "Demo chat — replies are simulated for now.",
   "chat.placeholder": "Write a message…",
@@ -678,6 +684,9 @@ const es: Dict = {
   "host.accepted": "Aceptada",
   "host.declined": "Rechazada",
   "chat.open": "Chat",
+  "chat.openGroup": "Open group chat",
+  "chat.groupTitle": "Group chat",
+  "chat.participants": "{n} participants",
   "chat.title": "Chat con {name}",
   "chat.subtitle": "Chat demo — las respuestas son simuladas.",
   "chat.placeholder": "Escribe un mensaje…",
@@ -925,6 +934,9 @@ const fr: Dict = {
   "host.accepted": "Acceptée",
   "host.declined": "Refusée",
   "chat.open": "Chat",
+  "chat.openGroup": "Open group chat",
+  "chat.groupTitle": "Group chat",
+  "chat.participants": "{n} participants",
   "chat.title": "Discuter avec {name}",
   "chat.subtitle": "Chat de démo — les réponses sont simulées.",
   "chat.placeholder": "Écrire un message…",
@@ -1172,6 +1184,9 @@ const de: Dict = {
   "host.accepted": "Angenommen",
   "host.declined": "Abgelehnt",
   "chat.open": "Chat",
+  "chat.openGroup": "Open group chat",
+  "chat.groupTitle": "Group chat",
+  "chat.participants": "{n} participants",
   "chat.title": "Chat mit {name}",
   "chat.subtitle": "Demo-Chat — Antworten sind simuliert.",
   "chat.placeholder": "Nachricht schreiben…",
@@ -1419,6 +1434,9 @@ const it: Dict = {
   "host.accepted": "Accettata",
   "host.declined": "Rifiutata",
   "chat.open": "Chat",
+  "chat.openGroup": "Open group chat",
+  "chat.groupTitle": "Group chat",
+  "chat.participants": "{n} participants",
   "chat.title": "Chat con {name}",
   "chat.subtitle": "Chat demo — le risposte sono simulate.",
   "chat.placeholder": "Scrivi un messaggio…",
@@ -1666,6 +1684,9 @@ const pt: Dict = {
   "host.accepted": "Aceite",
   "host.declined": "Recusado",
   "chat.open": "Chat",
+  "chat.openGroup": "Open group chat",
+  "chat.groupTitle": "Group chat",
+  "chat.participants": "{n} participants",
   "chat.title": "Chat com {name}",
   "chat.subtitle": "Chat demo — as respostas são simuladas.",
   "chat.placeholder": "Escreve uma mensagem…",
@@ -1913,6 +1934,9 @@ const ja: Dict = {
   "host.accepted": "承認済み",
   "host.declined": "拒否済み",
   "chat.open": "チャット",
+  "chat.openGroup": "グループチャットを開く",
+  "chat.groupTitle": "グループチャット",
+  "chat.participants": "{n}人の参加者",
   "chat.title": "{name} とチャット",
   "chat.subtitle": "デモチャット — 返信はシミュレーションです。",
   "chat.placeholder": "メッセージを入力…",
@@ -2160,6 +2184,9 @@ const zh: Dict = {
   "host.accepted": "已接受",
   "host.declined": "已拒绝",
   "chat.open": "聊天",
+  "chat.openGroup": "打开群聊",
+  "chat.groupTitle": "群聊",
+  "chat.participants": "{n} 位成员",
   "chat.title": "与 {name} 聊天",
   "chat.subtitle": "演示聊天 — 回复是模拟的。",
   "chat.placeholder": "写一条消息…",

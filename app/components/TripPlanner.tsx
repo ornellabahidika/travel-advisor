@@ -61,7 +61,7 @@ import type {
 import { useT } from "@/lib/language";
 import { track } from "@/lib/analytics";
 import { destinationKey, useHostedTrips } from "@/lib/hostedTrips";
-import { useChat } from "@/lib/chats";
+import { useGroupChat, type ChatParticipant } from "@/lib/chats";
 
 const THEME_EMOJI: { keywords: string[]; emoji: string }[] = [
   { keywords: ["beach", "coast", "ocean", "sea", "island"], emoji: "🏖️" },
@@ -1431,9 +1431,14 @@ function RequestsModal({
   onDeny: (requestId: string) => void;
 }) {
   const { t } = useT();
-  const [chatTarget, setChatTarget] = useState<JoinRequest | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const pending = trip.requests.filter((r) => r.status === "pending").length;
   const accepted = trip.requests.filter((r) => r.status === "accepted").length;
+  const activeRequests = trip.requests.filter((r) => r.status !== "denied");
+  const participants: ChatParticipant[] = [
+    { id: "host", name: trip.hostName, isHost: true },
+    ...activeRequests.map((r) => ({ id: r.id, name: r.requesterName })),
+  ];
 
   return (
     <div
@@ -1452,11 +1457,11 @@ function RequestsModal({
           <X className="h-5 w-5" />
         </button>
 
-        {chatTarget ? (
-          <ChatView
+        {chatOpen ? (
+          <GroupChatView
             tripId={trip.tripId}
-            request={chatTarget}
-            onBack={() => setChatTarget(null)}
+            participants={participants}
+            onBack={() => setChatOpen(false)}
           />
         ) : (
           <>
@@ -1467,6 +1472,16 @@ function RequestsModal({
               <p className="mt-0.5 text-sm text-slate-500">
                 {t("host.requestsSubtitle", { pending, accepted })}
               </p>
+              {activeRequests.length > 0 && (
+                <button
+                  onClick={() => setChatOpen(true)}
+                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-700"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  {t("chat.openGroup")} ·{" "}
+                  {t("chat.participants", { n: participants.length })}
+                </button>
+              )}
             </div>
 
             <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -1536,15 +1551,6 @@ function RequestsModal({
                                   {t("host.declined")}
                                 </span>
                               )}
-                              {r.status !== "denied" && (
-                                <button
-                                  onClick={() => setChatTarget(r)}
-                                  className="ml-auto inline-flex items-center gap-1 rounded-full border border-slate-900 bg-white px-3 py-1.5 text-xs font-bold text-slate-900 hover:bg-slate-900 hover:text-white"
-                                >
-                                  <MessageSquare className="h-3.5 w-3.5" />
-                                  {t("chat.open")}
-                                </button>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -1561,25 +1567,42 @@ function RequestsModal({
   );
 }
 
-function ChatView({
-  tripId,
-  request,
-  onBack,
-}: {
-  tripId: string;
-  request: JoinRequest;
-  onBack: () => void;
-}) {
-  const { t } = useT();
-  const { messages, sendMessage } = useChat(tripId, request.id);
-  const [draft, setDraft] = useState("");
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const initials = request.requesterName
+const PARTICIPANT_COLORS = [
+  "bg-rose-500",
+  "bg-amber-500",
+  "bg-emerald-500",
+  "bg-sky-500",
+  "bg-indigo-500",
+  "bg-fuchsia-500",
+  "bg-teal-600",
+];
+function colorFor(id: string): string {
+  let h = 0;
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return PARTICIPANT_COLORS[h % PARTICIPANT_COLORS.length];
+}
+function initialsOf(name: string): string {
+  return name
     .split(/\s+/)
     .map((p) => p[0])
     .slice(0, 2)
     .join("")
     .toUpperCase();
+}
+
+function GroupChatView({
+  tripId,
+  participants,
+  onBack,
+}: {
+  tripId: string;
+  participants: ChatParticipant[];
+  onBack: () => void;
+}) {
+  const { t } = useT();
+  const { messages, sendAsHost } = useGroupChat(tripId, participants);
+  const [draft, setDraft] = useState("");
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -1590,51 +1613,85 @@ function ChatView({
   const handleSend = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    sendMessage(trimmed);
+    sendAsHost(trimmed);
     setDraft("");
   };
 
   return (
     <>
-      <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-4">
-        <button
-          onClick={onBack}
-          aria-label={t("chat.back")}
-          className="rounded-full p-1 text-slate-700 hover:bg-slate-100"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">
-          {initials}
+      <div className="border-b border-slate-200 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            aria-label={t("chat.back")}
+            className="rounded-full p-1 text-slate-700 hover:bg-slate-100"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="font-bold text-slate-900">{t("chat.groupTitle")}</div>
+            <div className="text-xs text-slate-500">
+              {t("chat.participants", { n: participants.length })}
+            </div>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-bold text-slate-900">{request.requesterName}</div>
-          <div className="text-xs text-slate-500">from {request.requesterOrigin}</div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {participants.map((p) => (
+            <span
+              key={p.id}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold text-white ${
+                p.isHost ? "bg-slate-900" : colorFor(p.id)
+              }`}
+            >
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white/25 text-[9px]">
+                {initialsOf(p.name)}
+              </span>
+              {p.name}
+              {p.isHost && <span className="text-[9px] opacity-70">HOST</span>}
+            </span>
+          ))}
         </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-5 py-4">
+      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4">
         {messages.length === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-slate-500">
             {t("chat.empty")}
           </div>
         ) : (
-          messages.map((m) => (
-            <div
-              key={m.id}
-              className={`flex ${m.sender === "host" ? "justify-end" : "justify-start"}`}
-            >
+          messages.map((m) => {
+            const fromHost = m.senderId === "host";
+            return (
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
-                  m.sender === "host"
-                    ? "bg-[#34e0a1] text-slate-900"
-                    : "bg-white text-slate-900 shadow-sm border border-slate-200"
-                }`}
+                key={m.id}
+                className={`flex items-end gap-2 ${fromHost ? "justify-end" : "justify-start"}`}
               >
-                {m.body}
+                {!fromHost && (
+                  <div
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white ${colorFor(m.senderId)}`}
+                  >
+                    {initialsOf(m.senderName)}
+                  </div>
+                )}
+                <div className="max-w-[75%]">
+                  {!fromHost && (
+                    <div className="mb-0.5 text-[11px] font-bold text-slate-700">
+                      {m.senderName}
+                    </div>
+                  )}
+                  <div
+                    className={`rounded-2xl px-4 py-2 text-sm ${
+                      fromHost
+                        ? "bg-[#34e0a1] text-slate-900"
+                        : "border border-slate-200 bg-white text-slate-900 shadow-sm"
+                    }`}
+                  >
+                    {m.body}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 

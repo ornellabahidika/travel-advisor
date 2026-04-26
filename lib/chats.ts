@@ -8,10 +8,6 @@ const CHANGE_EVENT = "tripfinder:chats-changed";
 
 type ChatStore = Record<string, ChatMessage[]>;
 
-function chatKey(tripId: string, requestId: string): string {
-  return `${tripId}__${requestId}`;
-}
-
 function read(): ChatStore {
   if (typeof window === "undefined") return {};
   try {
@@ -29,72 +25,103 @@ function write(store: ChatStore) {
 }
 
 const REQUESTER_REPLIES = [
-  "Got it, thanks for getting back so fast! 🙌",
-  "Sounds good — really excited about this. What dates work best for you to chat more?",
-  "Yes, totally agree. Anything I should pre-book or bring?",
-  "Same here! What's your usual pace — early starts or slow mornings?",
-  "Perfect. I'll start looking at flights on my end.",
-  "Hey, really appreciate the reply. Looking forward to it!",
-  "I'm flexible on most things — just let me know what you're thinking.",
+  "Got it, thanks! 🙌",
+  "Sounds good — I'm in.",
+  "Yes, agree. What dates work for everyone?",
+  "Same here. What's the pace looking like — early starts or slow mornings?",
+  "Perfect. I'll start looking at flights tonight.",
+  "Hey all — really excited about this. 🙌",
+  "I'm flexible on most things, just let me know what's the plan.",
+  "Quick q — anyone want to share an Airbnb to keep costs down?",
+  "Just chiming in — agreed with the above. Down for whatever.",
+  "Sounds great. Adding it to my calendar now.",
 ];
 
-function pickReply(seedSeed: string, alreadySent: number): string {
+function pickReplyText(seed: string): string {
   let h = 0;
-  const seed = seedSeed + ":" + alreadySent;
   for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return REQUESTER_REPLIES[h % REQUESTER_REPLIES.length];
 }
 
-export function useChat(tripId: string, requestId: string) {
+export type ChatParticipant = {
+  id: string; // "host" or requester id
+  name: string;
+  isHost?: boolean;
+};
+
+export function useGroupChat(tripId: string, participants: ChatParticipant[]) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const key = chatKey(tripId, requestId);
 
   useEffect(() => {
-    setMessages(read()[key] ?? []);
-    const onChange = () => setMessages(read()[key] ?? []);
+    setMessages(read()[tripId] ?? []);
+    const onChange = () => setMessages(read()[tripId] ?? []);
     window.addEventListener(CHANGE_EVENT, onChange);
     window.addEventListener("storage", onChange);
     return () => {
       window.removeEventListener(CHANGE_EVENT, onChange);
       window.removeEventListener("storage", onChange);
     };
-  }, [key]);
+  }, [tripId]);
 
-  const sendMessage = (body: string) => {
+  const sendAsHost = (body: string) => {
     const trimmed = body.trim();
     if (!trimmed) return;
+    const host = participants.find((p) => p.isHost);
+    if (!host) return;
     const store = read();
-    const list = store[key] ?? [];
+    const list = store[tripId] ?? [];
     const hostMsg: ChatMessage = {
       id: `m-${Date.now()}`,
-      sender: "host",
+      senderId: host.id,
+      senderName: host.name,
       body: trimmed,
       timestamp: Date.now(),
     };
-    store[key] = [...list, hostMsg];
+    store[tripId] = [...list, hostMsg];
     write(store);
 
-    // Simulate a reply after 2-3 seconds
-    const replyDelay = 2000 + Math.random() * 1500;
+    // Simulate one (or sometimes two) participant replies
+    const others = participants.filter((p) => !p.isHost);
+    if (others.length === 0) return;
+
+    const firstDelay = 1500 + Math.random() * 1500;
     setTimeout(() => {
+      const replier = others[Math.floor(Math.random() * others.length)];
       const latest = read();
-      const updated = latest[key] ?? [];
-      const hostMessagesSoFar = updated.filter((m) => m.sender === "host").length;
+      const updated = latest[tripId] ?? [];
+      const replyText = pickReplyText(`${tripId}:${replier.id}:${updated.length}`);
       const reply: ChatMessage = {
-        id: `m-${Date.now()}-r`,
-        sender: "requester",
-        body: pickReply(key, hostMessagesSoFar),
+        id: `m-${Date.now()}-r1`,
+        senderId: replier.id,
+        senderName: replier.name,
+        body: replyText,
         timestamp: Date.now(),
       };
-      latest[key] = [...updated, reply];
+      latest[tripId] = [...updated, reply];
       write(latest);
-    }, replyDelay);
+
+      // ~30% chance a second participant chimes in
+      if (others.length >= 2 && Math.random() < 0.3) {
+        const secondDelay = 1200 + Math.random() * 1500;
+        setTimeout(() => {
+          const remaining = others.filter((p) => p.id !== replier.id);
+          const second = remaining[Math.floor(Math.random() * remaining.length)];
+          const next = read();
+          const nextUpdated = next[tripId] ?? [];
+          const secondText = pickReplyText(`${tripId}:${second.id}:${nextUpdated.length}`);
+          const secondReply: ChatMessage = {
+            id: `m-${Date.now()}-r2`,
+            senderId: second.id,
+            senderName: second.name,
+            body: secondText,
+            timestamp: Date.now(),
+          };
+          next[tripId] = [...nextUpdated, secondReply];
+          write(next);
+        }, secondDelay);
+      }
+    }, firstDelay);
   };
 
-  return { messages, sendMessage };
-}
-
-export function unreadCount(tripId: string, requestId: string, lastSeen: number): number {
-  const list = read()[chatKey(tripId, requestId)] ?? [];
-  return list.filter((m) => m.sender === "requester" && m.timestamp > lastSeen).length;
+  return { messages, sendAsHost };
 }

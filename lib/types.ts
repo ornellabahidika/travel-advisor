@@ -90,7 +90,8 @@ export type JoinRequestStatus = "pending" | "accepted" | "denied";
 
 export type ChatMessage = {
   id: string;
-  sender: "host" | "requester";
+  senderId: string; // "host" or requester id
+  senderName: string;
   body: string;
   timestamp: number;
 };
