@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Travel Advisor — Where should you go next?",
+  title: "VoyPilot — Where should you go next?",
   description:
-    "AI-powered travel suggestions that reason over live web data, real constraints, and your actual vibe.",
+    "VoyPilot: AI-powered travel suggestions, end-to-end trip planning, restaurants, transport, events, group trips, and more.",
 };
 
 export default function RootLayout({

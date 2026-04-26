@@ -213,7 +213,7 @@ function SignInView({
         >
           {t("auth.joinLink")}
         </button>{" "}
-        to unlock the best of tripfinder.
+        to unlock the best of VoyPilot.
       </p>
     </>
   );
@@ -334,7 +334,7 @@ function JoinView({
         >
           {t("auth.signInLink")}
         </button>{" "}
-        using your tripfinder account.
+        using your VoyPilot account.
       </p>
     </>
   );

@@ -24,7 +24,7 @@ export function Header() {
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-yellow-400 text-xl shadow-sm ring-2 ring-amber-200">
             🧳
           </span>
-          tripfinder
+          VoyPilot
         </Link>
 
         <div className="flex items-center gap-2">
