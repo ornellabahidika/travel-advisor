@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TRANSLATIONS, type TKey } from "./translations";
+import { track } from "./analytics";
 
 export type Language = {
   code: string;
@@ -86,6 +87,7 @@ export function useLanguage() {
   }, []);
 
   const setLanguage = (next: string) => {
+    if (next !== code) track("language_changed", { from: code, to: next });
     window.localStorage.setItem(STORAGE_KEY, next);
     window.dispatchEvent(new Event(CHANGE_EVENT));
     setCode(next);

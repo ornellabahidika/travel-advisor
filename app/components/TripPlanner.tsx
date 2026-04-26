@@ -58,6 +58,7 @@ import type {
   TripDetailsResponse,
 } from "@/lib/types";
 import { useT } from "@/lib/language";
+import { track } from "@/lib/analytics";
 import { destinationKey, useHostedTrips } from "@/lib/hostedTrips";
 
 const THEME_EMOJI: { keywords: string[]; emoji: string }[] = [
@@ -115,6 +116,15 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
 
   useEffect(() => {
     let cancelled = false;
+    track("trip_plan_viewed", {
+      destination: input.name,
+      country: input.country,
+      origin: input.origin,
+      travelers: input.travelers,
+      budget: input.budget,
+      currency: input.currency,
+    });
+    const startedAt = Date.now();
     (async () => {
       try {
         const res = await fetch("/api/trip-details", {
@@ -125,7 +135,14 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
         const data: TripDetailsResponse = await res.json();
         if (cancelled) return;
         if (!data.ok) setError(data.error);
-        else setDetails(data.details);
+        else {
+          setDetails(data.details);
+          track("trip_plan_loaded", {
+            destination: input.name,
+            country: input.country,
+            loadMs: Date.now() - startedAt,
+          });
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Something went wrong");
@@ -325,6 +342,13 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
                     href={f.bookingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() =>
+                      track("flight_book_clicked", {
+                        airline: f.airline,
+                        price: f.approxPrice,
+                        currency: f.currency,
+                      })
+                    }
                     className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
                   >
                     {t("trip.book")}
@@ -398,9 +422,16 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
                       href={h.bookingUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() =>
+                        track("hotel_book_clicked", {
+                          hotelName: h.name,
+                          pricePerNight: h.approxPricePerNight,
+                          currency: h.currency,
+                        })
+                      }
                       className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
                     >
-                      Book
+                      {t("trip.book")}
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   </div>
@@ -506,7 +537,12 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           {details.thingsToDo.length > 0 && (
             <div className="mt-6">
               <button
-                onClick={() => setShowThings((v) => !v)}
+                onClick={() => {
+                  setShowThings((v) => {
+                    if (!v) track("things_to_do_expanded", { destination: input.name });
+                    return !v;
+                  });
+                }}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white px-4 py-3.5 text-sm font-bold text-slate-700 transition hover:border-slate-900 hover:bg-slate-50"
               >
                 <Compass className="h-4 w-4" />
@@ -528,7 +564,12 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           {details.restaurants.length > 0 && (
             <div className="mt-3">
               <button
-                onClick={() => setShowRestaurants((v) => !v)}
+                onClick={() => {
+                  setShowRestaurants((v) => {
+                    if (!v) track("restaurants_expanded", { destination: input.name });
+                    return !v;
+                  });
+                }}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white px-4 py-3.5 text-sm font-bold text-slate-700 transition hover:border-slate-900 hover:bg-slate-50"
               >
                 <Utensils className="h-4 w-4" />
@@ -647,6 +688,11 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           onClose={() => setShowHostModal(false)}
           onSubmit={(trip) => {
             addHosted(trip);
+            track("group_trip_hosted", {
+              destination: input.name,
+              capacity: trip.capacity,
+              focusCount: trip.focus.length,
+            });
           }}
         />
       )}
@@ -962,6 +1008,12 @@ function TransportCard({ option }: { option: TransportOption }) {
             href={option.bookingUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() =>
+              track("transport_book_clicked", {
+                mode: option.mode,
+                title: option.title,
+              })
+            }
             className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-700"
           >
             {t("transport.book")}
@@ -1035,6 +1087,12 @@ function EventCard({ event }: { event: LocalEvent }) {
               href={event.ticketUrl}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() =>
+                track("event_tickets_clicked", {
+                  title: event.title,
+                  category: event.category,
+                })
+              }
               className="inline-flex items-center gap-1 rounded-full bg-[#34e0a1] px-3 py-1.5 text-xs font-black text-slate-900 transition hover:bg-[#2ccb91]"
             >
               {t("trip.getTickets")}
@@ -1580,7 +1638,13 @@ function JoinModal({
                 Cancel
               </button>
               <button
-                onClick={() => setSent(true)}
+                onClick={() => {
+                  track("join_request_sent", {
+                    hostName: group.hostName,
+                    messageLength: message.trim().length,
+                  });
+                  setSent(true);
+                }}
                 disabled={message.trim().length < 10}
                 className="flex items-center gap-1.5 rounded-full bg-[#34e0a1] px-5 py-2 text-sm font-black text-slate-900 transition hover:bg-[#2ccb91] disabled:cursor-not-allowed disabled:opacity-50"
               >

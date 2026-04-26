@@ -14,6 +14,7 @@ import {
 import type { Destination } from "@/lib/types";
 import { useFavorites } from "@/lib/favorites";
 import { useT } from "@/lib/language";
+import { track } from "@/lib/analytics";
 
 export function DestinationCard({
   destination,
@@ -60,7 +61,15 @@ export function DestinationCard({
 
         {/* Heart save */}
         <button
-          onClick={() => toggleFavorite(destination, tripHref)}
+          onClick={() => {
+            toggleFavorite(destination, tripHref);
+            track("favorite_toggled", {
+              destination: destination.name,
+              country: destination.country,
+              action: saved ? "remove" : "add",
+              matchScore: destination.matchScore,
+            });
+          }}
           aria-label={saved ? "Remove from favorites" : "Save to favorites"}
           className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md transition hover:scale-110"
         >
@@ -156,6 +165,13 @@ export function DestinationCard({
           </div>
           <Link
             href={tripHref}
+            onClick={() =>
+              track("destination_clicked", {
+                destination: destination.name,
+                country: destination.country,
+                matchScore: destination.matchScore,
+              })
+            }
             className="rounded-full bg-[#34e0a1] px-5 py-2.5 text-sm font-black text-slate-900 transition hover:bg-[#2ccb91]"
           >
             {t("card.viewTrip")}

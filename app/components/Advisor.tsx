@@ -17,6 +17,7 @@ import {
 import type { Destination, SuggestResponse, TravelInput } from "@/lib/types";
 import { DestinationCard } from "./DestinationCard";
 import { useT } from "@/lib/language";
+import { track } from "@/lib/analytics";
 import { VibeComboBox } from "./VibeComboBox";
 import { Autocomplete } from "./Autocomplete";
 import { POPULAR_LOCATIONS, CITIES_ONLY, COUNTRIES } from "@/lib/locations";
@@ -110,6 +111,22 @@ export function Advisor() {
         setError("Enter both destination city and country");
         return;
       }
+      track("search_submitted", {
+        mode: "known",
+        origin: form.origin,
+        destination: knownName.trim(),
+        country: knownCountry.trim(),
+        budget,
+        currency: form.currency,
+        travelers,
+        nights: Math.max(
+          1,
+          Math.round(
+            (new Date(form.endDate).getTime() - new Date(form.startDate).getTime()) /
+              (1000 * 60 * 60 * 24),
+          ),
+        ),
+      });
       router.push(buildTripUrl(knownName.trim(), knownCountry.trim()));
       return;
     }
@@ -121,6 +138,16 @@ export function Advisor() {
     setSubmitted(true);
 
     const payload: TravelInput = { ...form, budget, travelers, vibe: combinedVibe() };
+    track("search_submitted", {
+      mode: "discover",
+      origin: form.origin,
+      budget,
+      currency: form.currency,
+      travelers,
+      climate: form.climate,
+      vibeTagsCount: vibeTags.length,
+      hasConstraints: form.constraints.trim().length > 0,
+    });
     try {
       const res = await fetch("/api/suggest", {
         method: "POST",

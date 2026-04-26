@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { identify, reset, track } from "./analytics";
 
 export type AuthUser = {
   id: string;
@@ -58,37 +59,50 @@ export function useAuth() {
   }, []);
 
   const signInWithGoogle = () => {
-    write({
+    const u: AuthUser = {
       id: `google-${Date.now()}`,
       name: "Demo Google User",
       email: "demo.user@gmail.com",
       provider: "google",
       createdAt: Date.now(),
-    });
+    };
+    write(u);
+    identify(u.id, { email: u.email, name: u.name, provider: u.provider });
+    track("signed_in", { provider: "google" });
   };
 
   const signUpWithEmail = (name: string, email: string) => {
-    write({
+    const u: AuthUser = {
       id: `email-${Date.now()}`,
       name: name.trim(),
       email: email.trim().toLowerCase(),
       provider: "email",
       createdAt: Date.now(),
-    });
+    };
+    write(u);
+    identify(u.id, { email: u.email, name: u.name, provider: u.provider });
+    track("signed_in", { provider: "email", flow: "join" });
   };
 
   const signInWithEmail = (email: string) => {
     const existingName = email.split("@")[0];
-    write({
+    const u: AuthUser = {
       id: `email-${Date.now()}`,
       name: existingName,
       email: email.trim().toLowerCase(),
       provider: "email",
       createdAt: Date.now(),
-    });
+    };
+    write(u);
+    identify(u.id, { email: u.email, name: u.name, provider: u.provider });
+    track("signed_in", { provider: "email", flow: "signin" });
   };
 
-  const signOut = () => write(null);
+  const signOut = () => {
+    track("signed_out");
+    write(null);
+    reset();
+  };
 
   return { user, signInWithGoogle, signUpWithEmail, signInWithEmail, signOut };
 }
