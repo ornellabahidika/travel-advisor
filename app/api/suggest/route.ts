@@ -203,7 +203,7 @@ export async function POST(req: Request): Promise<Response> {
   let parsed;
   try {
     const response = await anthropic.messages.parse({
-      model: "claude-opus-4-7",
+      model: "claude-sonnet-4-6",
       max_tokens: 12000,
       thinking: { type: "adaptive" },
       output_config: {
