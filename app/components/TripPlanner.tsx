@@ -484,7 +484,7 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           <SectionHeader
             icon={<Plane className="h-5 w-5" />}
             title={t("trip.flights")}
-            subtitle={t("trip.cheapestFirst")}
+            subtitle={`${t("trip.cheapestFirst")} · Prices are estimates — click "See live prices" to compare on momondo`}
             badge={`${details.flights.length} options`}
             open={openSections.has("flights")}
             onToggle={() => toggleSection("flights")}
@@ -520,11 +520,16 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
                   )}
                 </div>
                 <div className="flex items-center gap-3 sm:flex-col sm:items-end">
-                  <div className="text-2xl font-black text-slate-900 dark:text-slate-50">
-                    {f.approxPrice.toLocaleString()}{" "}
-                    <span className="text-sm font-normal text-slate-500">
-                      {f.currency}
+                  <div className="flex items-baseline gap-1.5 sm:flex-col sm:items-end sm:gap-0">
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
+                      Estimate
                     </span>
+                    <div className="text-2xl font-black text-slate-900 dark:text-slate-50">
+                      ~{f.approxPrice.toLocaleString()}{" "}
+                      <span className="text-sm font-normal text-slate-500">
+                        {f.currency}
+                      </span>
+                    </div>
                   </div>
                   <a
                     href={f.bookingUrl}
@@ -539,7 +544,7 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
                     }
                     className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
                   >
-                    {t("trip.book")}
+                    See live prices
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 </div>
@@ -560,7 +565,7 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           <SectionHeader
             icon={<Hotel className="h-5 w-5" />}
             title={t("trip.hotels")}
-            subtitle={t("trip.perNight")}
+            subtitle={`${t("trip.perNight")} · Prices are estimates — click "See live prices" to compare on Booking.com`}
             badge={`${details.hotels.length} stays`}
             open={openSections.has("hotels")}
             onToggle={() => toggleSection("hotels")}
@@ -609,11 +614,16 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
                   )}
                   <div className="flex items-center justify-between pt-2">
                     <div>
-                      <div className="text-lg font-black text-slate-900 dark:text-slate-50">
-                        {h.approxPricePerNight.toLocaleString()}{" "}
-                        <span className="text-xs font-normal text-slate-500">
-                          {h.currency}
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">
+                          Estimate
                         </span>
+                        <div className="text-lg font-black text-slate-900 dark:text-slate-50">
+                          ~{h.approxPricePerNight.toLocaleString()}{" "}
+                          <span className="text-xs font-normal text-slate-500">
+                            {h.currency}
+                          </span>
+                        </div>
                       </div>
                       <div className="text-xs text-slate-500">{t("trip.perNight")}</div>
                     </div>
@@ -630,7 +640,7 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
                       }
                       className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700"
                     >
-                      {t("trip.book")}
+                      See live prices
                       <ExternalLink className="h-3.5 w-3.5" />
                     </a>
                   </div>
