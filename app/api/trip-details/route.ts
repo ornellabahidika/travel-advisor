@@ -29,7 +29,7 @@ const CORE_PROMPT = `You are a senior travel planner. Given user constraints and
 Rules:
 - Use the Tavily sources (categories "flights", "hotels", "activities", "tips") as ground truth for prices, airline names, hotel names, neighborhoods. Estimate conservatively when exact prices are missing.
 - Flights: prices are GROUP TOTAL for the stated number of travelers (per-person × travelers). Sort cheapest first. For each, set sourceIndex to the index of the Tavily "flights" source that best matches (for the "Book" link). Null if no good match.
-- Hotels: must fit within roughly (budget - flights) / nights per night for the group. 1-2 travelers: one standard room. 3-4: one larger room, family room, or two standard. 5+: two rooms or apartment rental. Mention occupancy in highlights where relevant. For each, set sourceIndex to the best Tavily "hotels" source. imageIndex = index in the images array that visually represents the hotel, or null.
+- Hotels: CRITICAL — only suggest hotels that REALLY EXIST and are very likely to be listed on Booking.com. Prefer well-known international chains (Marriott, Hilton, Hyatt, Accor/Sofitel/Mercure/Novotel/Ibis, IHG/Holiday Inn/Crowne Plaza, Kempinski, Radisson, Four Seasons, Mandarin Oriental, Hyatt Regency) or famously-listed independent hotels named in the Tavily "hotels" sources. NEVER invent plausible-sounding boutique names — they break the booking link. If unsure a property exists, prefer a chain. Must fit within roughly (budget - flights) / nights per night for the group. 1-2 travelers: one standard room. 3-4: one larger room, family room, or two standard. 5+: two rooms or apartment rental. Mention occupancy in highlights where relevant. For each, set sourceIndex to the best Tavily "hotels" source. imageIndex = index in the images array that visually represents the hotel, or null.
 - insiderTips: 3-5 specific non-generic tips ("avoid the metro at rush hour" beats "be respectful of local customs").
 - heroImageIndex: pick the single image index that best represents the destination.
 - Respect the user's constraints (dietary, pets, accessibility, etc.) literally.
@@ -167,16 +167,26 @@ function flightSearchUrl(
   return `https://www.google.com/travel/flights?q=${q}`;
 }
 
-// Booking.com search prefilled with the specific hotel name + destination +
-// dates. Searching the hotel name first makes the actual property the top
-// result on Booking.com (or surfaces close matches if the exact one isn't
-// listed). Using this for ALL hotels (not just when the LLM had no source)
-// keeps the Book link tied to the card.
-function hotelSearchUrl(name: string, dest: string, start: string, end: string): string {
+// Booking.com search prefilled with hotel name + destination + dates +
+// party size. The dates + party size are the load-bearing fields: even if
+// our suggested hotel name doesn't exist on Booking (LLM occasionally
+// invents one), the user still lands on a page of REAL hotels actually
+// available for their date range and group size — never a dead end. If
+// the hotel does exist, Booking's fuzzy search surfaces it at the top.
+function hotelSearchUrl(
+  name: string,
+  dest: string,
+  start: string,
+  end: string,
+  travelers: number,
+): string {
   const params = new URLSearchParams({
-    ss: `${name} ${dest}`,
+    ss: `${name}, ${dest}`,
     checkin: start,
     checkout: end,
+    group_adults: String(Math.max(1, travelers)),
+    no_rooms: travelers >= 5 ? "2" : "1",
+    group_children: "0",
   });
   return `https://www.booking.com/searchresults.html?${params.toString()}`;
 }
@@ -382,6 +392,7 @@ export async function POST(req: Request): Promise<Response> {
                 destFull,
                 input.startDate,
                 input.endDate,
+                input.travelers,
               ),
               imageUrl:
                 h.imageIndex !== null &&
