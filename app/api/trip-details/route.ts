@@ -19,6 +19,7 @@ import {
   type TripDetails,
   type TripDetailsResponse,
 } from "@/lib/types";
+import { toAirlineCode, toCityCode } from "@/lib/iata";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -137,10 +138,11 @@ function daysBetween(start: string, end: string): number {
   return Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
-// Build a per-flight Google Flights URL that includes the specific airline
-// shown on the card. Previously we fell back to LLM-picked Tavily source URLs
-// which often pointed at "best flights" listicles rather than the actual
-// carrier — making the Book button mismatched with what the user sees.
+// Deep-link to momondo's actual flight results page (route + dates + airline
+// pre-filtered, sorted cheapest first) — the user lands directly on flight
+// options matching the card instead of a generic search box. Falls back to a
+// Google Flights query string when we can't resolve the city/airport to an
+// IATA code.
 function flightSearchUrl(
   origin: string,
   dest: string,
@@ -148,6 +150,17 @@ function flightSearchUrl(
   start: string,
   end: string,
 ): string {
+  const originCode = toCityCode(origin);
+  const destCode = toCityCode(dest);
+  if (originCode && destCode) {
+    const params = new URLSearchParams({ sort: "price_a" });
+    const airlineCode = toAirlineCode(airline);
+    if (airlineCode) {
+      // momondo's airline filter syntax: fs=airlines=AF (or comma-separated for multiple)
+      params.set("fs", `airlines=${airlineCode}`);
+    }
+    return `https://www.momondo.com/flight-search/${originCode}-${destCode}/${start}/${end}?${params.toString()}`;
+  }
   const q = encodeURIComponent(
     `flights from ${origin} to ${dest} on ${airline} ${start} to ${end}`,
   );
