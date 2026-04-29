@@ -137,11 +137,28 @@ function daysBetween(start: string, end: string): number {
   return Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
-function googleFlightsUrl(origin: string, dest: string, start: string, end: string): string {
-  const q = encodeURIComponent(`flights from ${origin} to ${dest} ${start} to ${end}`);
+// Build a per-flight Google Flights URL that includes the specific airline
+// shown on the card. Previously we fell back to LLM-picked Tavily source URLs
+// which often pointed at "best flights" listicles rather than the actual
+// carrier — making the Book button mismatched with what the user sees.
+function flightSearchUrl(
+  origin: string,
+  dest: string,
+  airline: string,
+  start: string,
+  end: string,
+): string {
+  const q = encodeURIComponent(
+    `flights from ${origin} to ${dest} on ${airline} ${start} to ${end}`,
+  );
   return `https://www.google.com/travel/flights?q=${q}`;
 }
 
+// Booking.com search prefilled with the specific hotel name + destination +
+// dates. Searching the hotel name first makes the actual property the top
+// result on Booking.com (or surfaces close matches if the exact one isn't
+// listed). Using this for ALL hotels (not just when the LLM had no source)
+// keeps the Book link tied to the card.
 function hotelSearchUrl(name: string, dest: string, start: string, end: string): string {
   const params = new URLSearchParams({
     ss: `${name} ${dest}`,
@@ -275,16 +292,6 @@ export async function POST(req: Request): Promise<Response> {
 
   const anthropic = new Anthropic();
 
-  const genericFlightUrl = googleFlightsUrl(
-    input.origin,
-    destFull,
-    input.startDate,
-    input.endDate,
-  );
-  const sourceUrl = (idx: number | null): string | null => {
-    if (idx === null || idx < 0 || idx >= sources.length) return null;
-    return sources[idx].url;
-  };
 
   // Stream three independent Claude calls. As each one returns, the client
   // gets that section right away — so the page renders the moment "core"
@@ -342,7 +349,13 @@ export async function POST(req: Request): Promise<Response> {
                 durationHours: f.durationHours,
                 stops: f.stops,
                 notes: f.notes,
-                bookingUrl: sourceUrl(f.sourceIndex) ?? genericFlightUrl,
+                bookingUrl: flightSearchUrl(
+                  input.origin,
+                  destFull,
+                  f.airline,
+                  input.startDate,
+                  input.endDate,
+                ),
               })),
             hotels: core.hotels.map((h) => ({
               name: h.name,
@@ -351,9 +364,12 @@ export async function POST(req: Request): Promise<Response> {
               currency: h.currency,
               ratingOutOf5: h.ratingOutOf5,
               highlights: h.highlights,
-              bookingUrl:
-                sourceUrl(h.sourceIndex) ??
-                hotelSearchUrl(h.name, destFull, input.startDate, input.endDate),
+              bookingUrl: hotelSearchUrl(
+                h.name,
+                destFull,
+                input.startDate,
+                input.endDate,
+              ),
               imageUrl:
                 h.imageIndex !== null &&
                 h.imageIndex >= 0 &&

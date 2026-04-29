@@ -651,7 +651,7 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
         <section id="itinerary" className="scroll-mt-20">
           <SectionHeader
             icon={<Calendar className="h-5 w-5" />}
-            title={t("trip.yourItinerary", { name: input.name })}
+            title={t("trip.itinerary")}
             subtitle={
               loadingItinerary
                 ? "Generating day-by-day plan…"
