@@ -393,40 +393,44 @@ export function Advisor() {
             </button>
           </div>
 
-          {/* Climate + Vibe combobox on same row (both modes) */}
-          <div className="grid gap-4 border-t border-slate-200 bg-slate-50 p-4 sm:grid-cols-[240px_1fr]">
-            <div>
-              <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-600">
-                {t("form.climate")}
+          {/* Climate + Vibe combobox — only relevant when discovering. In
+              "known" mode the user has already chosen their destination, so
+              filtering by climate/vibe is moot. */}
+          {mode === "discover" && (
+            <div className="grid gap-4 border-t border-slate-200 bg-slate-50 p-4 sm:grid-cols-[240px_1fr]">
+              <div>
+                <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-600">
+                  {t("form.climate")}
+                </div>
+                <select
+                  value={form.climate}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      climate: e.target.value as TravelInput["climate"],
+                    })
+                  }
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-[#00aa6c] focus:outline-none focus:ring-1 focus:ring-[#00aa6c]"
+                >
+                  {CLIMATES.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {t(c.tkey)}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <select
-                value={form.climate}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    climate: e.target.value as TravelInput["climate"],
-                  })
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900 focus:border-[#00aa6c] focus:outline-none focus:ring-1 focus:ring-[#00aa6c]"
-              >
-                {CLIMATES.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {t(c.tkey)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-600">
-                {t("form.quickVibe")}
+              <div>
+                <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-600">
+                  {t("form.quickVibe")}
+                </div>
+                <VibeComboBox
+                  values={vibeTags}
+                  onChange={setVibeTags}
+                  onApplyInterests={applyInterests}
+                />
               </div>
-              <VibeComboBox
-                values={vibeTags}
-                onChange={setVibeTags}
-                onApplyInterests={applyInterests}
-              />
             </div>
-          </div>
+          )}
 
           {/* Constraints row */}
           <div className="border-t border-slate-200 p-4">
