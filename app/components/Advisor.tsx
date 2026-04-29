@@ -375,11 +375,11 @@ export function Advisor() {
               </div>
             </label>
 
-            {/* Search button */}
+            {/* Search button — desktop only (in grid row) */}
             <button
               type="submit"
               disabled={loading}
-              className="flex min-w-[140px] items-center justify-center gap-2 bg-[#34e0a1] px-6 py-4 text-base font-black text-slate-900 transition hover:bg-[#2ccb91] disabled:cursor-not-allowed disabled:opacity-60"
+              className="hidden min-w-[140px] items-center justify-center gap-2 bg-[#34e0a1] px-6 py-4 text-base font-black text-slate-900 transition hover:bg-[#2ccb91] disabled:cursor-not-allowed disabled:opacity-60 sm:flex"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -444,6 +444,27 @@ export function Advisor() {
                 />
               </Field>
             </div>
+
+          {/* Mobile-only search button — appears after climate/vibe + constraints */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 bg-[#34e0a1] px-6 py-4 text-base font-black text-slate-900 transition hover:bg-[#2ccb91] disabled:cursor-not-allowed disabled:opacity-60 sm:hidden"
+          >
+            {loading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : mode === "known" ? (
+              <>
+                {t("form.planTrip")}
+                <ArrowRight className="h-5 w-5" />
+              </>
+            ) : (
+              <>
+                <Search className="h-5 w-5" />
+                {t("form.search")}
+              </>
+            )}
+          </button>
         </form>
       </section>
 
