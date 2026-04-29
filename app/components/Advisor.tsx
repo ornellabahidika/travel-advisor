@@ -21,7 +21,6 @@ import { track } from "@/lib/analytics";
 import { VibeComboBox } from "./VibeComboBox";
 import { Autocomplete } from "./Autocomplete";
 import { ContinueSection } from "./ContinueSection";
-import { COUNTRIES } from "@/lib/locations";
 import { searchPlaces } from "@/lib/photon";
 import type { TKey } from "@/lib/translations";
 
@@ -59,8 +58,7 @@ export function Advisor() {
   const [budgetInput, setBudgetInput] = useState<string>("2000");
   const [travelers, setTravelers] = useState<number>(1);
   const [vibeTags, setVibeTags] = useState<string[]>([]);
-  const [knownName, setKnownName] = useState<string>("");
-  const [knownCountry, setKnownCountry] = useState<string>("");
+  const [knownTo, setKnownTo] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [destinations, setDestinations] = useState<Destination[]>([]);
@@ -109,15 +107,24 @@ export function Advisor() {
 
     // "I know" mode — skip /api/suggest, go straight to trip plan
     if (mode === "known") {
-      if (!knownName.trim() || !knownCountry.trim()) {
-        setError("Enter both destination city and country");
+      const trimmed = knownTo.trim();
+      if (!trimmed) {
+        setError("Enter your destination");
         return;
       }
+      // Photon picks come back as "City, Region, Country" (or just "Country").
+      // First comma-part is the place name, last is the country.
+      const parts = trimmed.split(",").map((s) => s.trim()).filter(Boolean);
+      const country = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+      const placeName = parts[0]
+        .replace(/\s*\(.*?\)\s*/g, "")
+        .replace(/\s+Airport\s*$/i, "")
+        .trim() || parts[0];
       track("search_submitted", {
         mode: "known",
         origin: form.origin,
-        destination: knownName.trim(),
-        country: knownCountry.trim(),
+        destination: placeName,
+        country,
         budget,
         currency: form.currency,
         travelers,
@@ -129,7 +136,7 @@ export function Advisor() {
           ),
         ),
       });
-      router.push(buildTripUrl(knownName.trim(), knownCountry.trim()));
+      router.push(buildTripUrl(placeName, country));
       return;
     }
 
@@ -219,51 +226,19 @@ export function Advisor() {
           onSubmit={onSubmit}
           className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-md"
         >
-          {/* Known destination row (only in "known" mode) */}
-          {mode === "known" && (
-            <div className="grid grid-cols-1 gap-0 divide-y divide-slate-200 border-b border-slate-200 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-              <label className="flex cursor-text items-center gap-3 px-4 py-3 hover:bg-slate-50">
-                <MapPin className="h-5 w-5 shrink-0 text-[#00aa6c]" />
-                <div className="w-full min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    {t("form.destCity")}
-                  </div>
-                  <Autocomplete
-                    required
-                    value={knownName}
-                    onChange={setKnownName}
-                    loadOptions={searchPlaces}
-                    placeholder={t("form.destCityPlaceholder")}
-                    className="w-full border-0 bg-transparent text-base font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:outline-none"
-                  />
-                </div>
-              </label>
-              <label className="flex cursor-text items-center gap-3 px-4 py-3 hover:bg-slate-50">
-                <MapPin className="h-5 w-5 shrink-0 text-[#00aa6c]" />
-                <div className="w-full min-w-0">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    {t("form.country")}
-                  </div>
-                  <Autocomplete
-                    required
-                    value={knownCountry}
-                    onChange={setKnownCountry}
-                    suggestions={COUNTRIES}
-                    placeholder={t("form.countryPlaceholder")}
-                    className="w-full border-0 bg-transparent text-base font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:outline-none"
-                  />
-                </div>
-              </label>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-0 divide-y divide-slate-200 sm:grid-cols-[1fr_1.4fr_auto_1fr_auto] sm:divide-x sm:divide-y-0">
-            {/* Origin */}
+          <div
+            className={`grid grid-cols-1 gap-0 divide-y divide-slate-200 sm:divide-x sm:divide-y-0 ${
+              mode === "known"
+                ? "sm:grid-cols-[1fr_1fr_1.2fr_auto_1fr_auto]"
+                : "sm:grid-cols-[1fr_1.4fr_auto_1fr_auto]"
+            }`}
+          >
+            {/* From (origin) */}
             <label className="flex cursor-text items-center gap-3 px-4 py-3 hover:bg-slate-50">
               <MapPin className="h-5 w-5 shrink-0 text-[#00aa6c]" />
               <div className="w-full min-w-0">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  {t("form.travelingFrom")}
+                  {mode === "known" ? "From" : t("form.travelingFrom")}
                 </div>
                 <Autocomplete
                   required
@@ -275,6 +250,26 @@ export function Advisor() {
                 />
               </div>
             </label>
+
+            {/* To (only in known mode) */}
+            {mode === "known" && (
+              <label className="flex cursor-text items-center gap-3 px-4 py-3 hover:bg-slate-50">
+                <MapPin className="h-5 w-5 shrink-0 text-[#00aa6c]" />
+                <div className="w-full min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    To
+                  </div>
+                  <Autocomplete
+                    required
+                    value={knownTo}
+                    onChange={setKnownTo}
+                    loadOptions={searchPlaces}
+                    placeholder={t("form.destCityPlaceholder")}
+                    className="w-full border-0 bg-transparent text-base font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:outline-none"
+                  />
+                </div>
+              </label>
+            )}
 
             {/* Dates */}
             <div className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
