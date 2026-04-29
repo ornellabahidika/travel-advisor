@@ -125,7 +125,7 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
 
   useEffect(() => {
     if (!details) return;
-    const ids = ["overview", "flights", "hotels", "transport", "itinerary", "events", "reviews", "travelers", "tips"];
+    const ids = ["overview", "flights", "hotels", "itinerary", "events", "travelers", "transport", "reviews", "tips"];
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -231,13 +231,12 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
 
   // Order in which sections appear on the page; conditional sections drop
   // out so "Continue →" walks across only the ones that actually render.
-  const presentSections: string[] = ["overview", "flights", "hotels"];
-  if (details.transportation.length > 0) presentSections.push("transport");
-  presentSections.push("itinerary");
+  const presentSections: string[] = ["overview", "flights", "hotels", "itinerary"];
   if (details.events.length > 0) presentSections.push("events");
-  presentSections.push("reviews");
   if (details.groupTrips.length > 0 || hosted.length > 0)
     presentSections.push("travelers");
+  if (details.transportation.length > 0) presentSections.push("transport");
+  presentSections.push("reviews");
   if (details.insiderTips.length > 0) presentSections.push("tips");
 
   const sectionLabel = (id: string): string => {
@@ -329,13 +328,6 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             label={t("trip.hotels")}
             onClick={() => openSectionAndScroll("hotels")}
           />
-          {details.transportation.length > 0 && (
-            <SectionTab
-              active={activeSection === "transport"}
-              label={t("transport.title")}
-              onClick={() => openSectionAndScroll("transport")}
-            />
-          )}
           <SectionTab
             active={activeSection === "itinerary"}
             label={t("trip.itinerary")}
@@ -348,11 +340,6 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               onClick={() => openSectionAndScroll("events")}
             />
           )}
-          <SectionTab
-            active={activeSection === "reviews"}
-            label={`${t("trip.reviews")} (${details.reviews.totalCount})`}
-            onClick={() => openSectionAndScroll("reviews")}
-          />
           {details.groupTrips.length > 0 && (
             <SectionTab
               active={activeSection === "travelers"}
@@ -360,6 +347,18 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               onClick={() => openSectionAndScroll("travelers")}
             />
           )}
+          {details.transportation.length > 0 && (
+            <SectionTab
+              active={activeSection === "transport"}
+              label={t("transport.title")}
+              onClick={() => openSectionAndScroll("transport")}
+            />
+          )}
+          <SectionTab
+            active={activeSection === "reviews"}
+            label={`${t("trip.reviews")} (${details.reviews.totalCount})`}
+            onClick={() => openSectionAndScroll("reviews")}
+          />
           {details.insiderTips.length > 0 && (
             <SectionTab
               active={activeSection === "tips"}
@@ -557,33 +556,6 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           )}
         </section>
 
-        {/* Transportation */}
-        {details.transportation.length > 0 && (
-          <section id="transport" className="scroll-mt-20">
-            <SectionHeader
-              icon={<Bus className="h-5 w-5" />}
-              title={t("transport.title")}
-              subtitle={t("transport.subtitle", { name: input.name })}
-              badge={`${details.transportation.length} options`}
-              open={openSections.has("transport")}
-              onToggle={() => toggleSection("transport")}
-            />
-            {openSections.has("transport") && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {details.transportation.map((opt) => (
-                  <TransportCard key={opt.id} option={opt} />
-                ))}
-              </div>
-            )}
-            {openSections.has("transport") && nextOf("transport") && (
-              <NextSectionButton
-                label={sectionLabel(nextOf("transport")!)}
-                onClick={() => openSectionAndScroll(nextOf("transport")!)}
-              />
-            )}
-          </section>
-        )}
-
         {/* Itinerary — mockup style with emoji day headers */}
         <section id="itinerary" className="scroll-mt-20">
           <SectionHeader
@@ -755,27 +727,6 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           </section>
         )}
 
-        {/* Reviews */}
-        <section id="reviews" className="scroll-mt-20">
-          <SectionHeader
-            icon={<MessageSquare className="h-5 w-5" />}
-            title={t("trip.whatTravelersSay")}
-            subtitle={t("trip.reviewsCount", { n: details.reviews.totalCount.toLocaleString() })}
-            badge={`${details.reviews.totalCount.toLocaleString()} reviews`}
-            open={openSections.has("reviews")}
-            onToggle={() => toggleSection("reviews")}
-          />
-          {openSections.has("reviews") && (
-            <ReviewsSummary summary={details.reviews} />
-          )}
-          {openSections.has("reviews") && nextOf("reviews") && (
-            <NextSectionButton
-              label={sectionLabel(nextOf("reviews")!)}
-              onClick={() => openSectionAndScroll(nextOf("reviews")!)}
-            />
-          )}
-        </section>
-
         {/* Travelers heading there */}
         {(details.groupTrips.length > 0 || hosted.length > 0) && (
           <section id="travelers" className="scroll-mt-20">
@@ -836,6 +787,54 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             )}
           </section>
         )}
+
+        {/* Transportation */}
+        {details.transportation.length > 0 && (
+          <section id="transport" className="scroll-mt-20">
+            <SectionHeader
+              icon={<Bus className="h-5 w-5" />}
+              title={t("transport.title")}
+              subtitle={t("transport.subtitle", { name: input.name })}
+              badge={`${details.transportation.length} options`}
+              open={openSections.has("transport")}
+              onToggle={() => toggleSection("transport")}
+            />
+            {openSections.has("transport") && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {details.transportation.map((opt) => (
+                  <TransportCard key={opt.id} option={opt} />
+                ))}
+              </div>
+            )}
+            {openSections.has("transport") && nextOf("transport") && (
+              <NextSectionButton
+                label={sectionLabel(nextOf("transport")!)}
+                onClick={() => openSectionAndScroll(nextOf("transport")!)}
+              />
+            )}
+          </section>
+        )}
+
+        {/* Reviews */}
+        <section id="reviews" className="scroll-mt-20">
+          <SectionHeader
+            icon={<MessageSquare className="h-5 w-5" />}
+            title={t("trip.whatTravelersSay")}
+            subtitle={t("trip.reviewsCount", { n: details.reviews.totalCount.toLocaleString() })}
+            badge={`${details.reviews.totalCount.toLocaleString()} reviews`}
+            open={openSections.has("reviews")}
+            onToggle={() => toggleSection("reviews")}
+          />
+          {openSections.has("reviews") && (
+            <ReviewsSummary summary={details.reviews} />
+          )}
+          {openSections.has("reviews") && nextOf("reviews") && (
+            <NextSectionButton
+              label={sectionLabel(nextOf("reviews")!)}
+              onClick={() => openSectionAndScroll(nextOf("reviews")!)}
+            />
+          )}
+        </section>
 
         {/* Insider tips */}
         {details.insiderTips.length > 0 && (

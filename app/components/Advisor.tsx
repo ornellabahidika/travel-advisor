@@ -470,7 +470,6 @@ export function Advisor() {
 
       {/* Content below search */}
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
-        <ContinueSection />
         {error && (
           <div className="mb-6 rounded border border-red-200 bg-red-50 p-4 text-sm text-red-900">
             <strong>Error:</strong> {error}
@@ -483,6 +482,39 @@ export function Advisor() {
             <span>{t("loading.searching")}</span>
           </div>
         )}
+
+        {/* Search results — show first so the user sees the new stuff before recents. */}
+        {destinations.length > 0 && (
+          <div className="mb-10">
+            <div className="mb-6 flex items-baseline justify-between gap-4">
+              <h2 className="text-3xl font-black tracking-tight text-slate-900">
+                {t("results.title")}
+              </h2>
+              <p className="text-sm text-slate-600">
+                {t("results.count", { n: destinations.length })}
+              </p>
+            </div>
+            {reasoning && (
+              <div className="mb-6 rounded-xl bg-[#e0f7ec] p-4 text-sm text-slate-800">
+                <div className="mb-1 text-xs font-black uppercase tracking-wider text-[#004f32]">
+                  {t("results.howWePicked")}
+                </div>
+                {reasoning}
+              </div>
+            )}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {destinations.map((d) => (
+                <DestinationCard
+                  key={`${d.name}-${d.country}`}
+                  destination={d}
+                  tripHref={tripQuery(d)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <ContinueSection />
 
         {!submitted && !loading && destinations.length === 0 && (
           <section>
@@ -517,37 +549,6 @@ export function Advisor() {
           </section>
         )}
 
-        {destinations.length > 0 && (
-          <>
-            <div className="mb-6 flex items-baseline justify-between gap-4">
-              <h2 className="text-3xl font-black tracking-tight text-slate-900">
-                {t("results.title")}
-              </h2>
-              <p className="text-sm text-slate-600">
-                {t("results.count", { n: destinations.length })}
-              </p>
-            </div>
-
-            {reasoning && (
-              <div className="mb-6 rounded-xl bg-[#e0f7ec] p-4 text-sm text-slate-800">
-                <div className="mb-1 text-xs font-black uppercase tracking-wider text-[#004f32]">
-                  {t("results.howWePicked")}
-                </div>
-                {reasoning}
-              </div>
-            )}
-
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {destinations.map((d) => (
-                <DestinationCard
-                  key={`${d.name}-${d.country}`}
-                  destination={d}
-                  tripHref={tripQuery(d)}
-                />
-              ))}
-            </div>
-          </>
-        )}
       </div>
     </div>
   );
