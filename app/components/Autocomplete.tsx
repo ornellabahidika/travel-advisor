@@ -87,7 +87,7 @@ export function Autocomplete({
           setLoading(false);
         }
       }
-    }, 180);
+    }, 100);
     return () => {
       clearTimeout(handle);
       controller.abort();
