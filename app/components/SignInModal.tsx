@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { X, Mail, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { X, Mail, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/language";
 
-type View = "initial" | "signin" | "join";
+type View = "initial" | "email";
 
 export function SignInModal({ onClose }: { onClose: () => void }) {
   const { t } = useT();
-  const { signInWithGoogle, signUpWithEmail, signInWithEmail } = useAuth();
+  const { signInWithGoogle, signInWithEmail } = useAuth();
   const [view, setView] = useState<View>("initial");
+  const [comingSoon, setComingSoon] = useState<null | "Apple" | "Facebook">(null);
 
   return (
     <div
@@ -43,40 +44,44 @@ export function SignInModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="flex justify-center pt-2">
-          <OwlLogo />
+          <BrandLogo />
         </div>
 
         <div className="px-8 pb-8 pt-4">
+          <h2 className="mb-1 text-center text-2xl font-black leading-tight text-slate-900">
+            Sign in or create an account
+          </h2>
+          <p className="mb-6 text-center text-sm text-slate-600">
+            Save trips, sync across devices, and unlock the full VoyPilot experience.
+          </p>
+
+          {comingSoon && view === "initial" && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {comingSoon} sign-in is coming soon — for now please continue with Google or email.
+            </div>
+          )}
+
           {view === "initial" && (
             <InitialView
-              t={t}
               onGoogle={() => {
                 signInWithGoogle();
                 onClose();
               }}
-              onEmail={() => setView("signin")}
+              onApple={() => setComingSoon("Apple")}
+              onFacebook={() => setComingSoon("Facebook")}
+              onEmail={() => {
+                setComingSoon(null);
+                setView("email");
+              }}
             />
           )}
 
-          {view === "signin" && (
-            <SignInView
-              t={t}
+          {view === "email" && (
+            <EmailView
               onSubmit={(email) => {
                 signInWithEmail(email);
                 onClose();
               }}
-              onSwitchToJoin={() => setView("join")}
-            />
-          )}
-
-          {view === "join" && (
-            <JoinView
-              t={t}
-              onSubmit={(first, last, email) => {
-                signUpWithEmail(`${first} ${last}`, email);
-                onClose();
-              }}
-              onSwitchToSignIn={() => setView("signin")}
             />
           )}
 
@@ -88,272 +93,99 @@ export function SignInModal({ onClose }: { onClose: () => void }) {
 }
 
 function InitialView({
-  t,
   onGoogle,
+  onApple,
+  onFacebook,
   onEmail,
 }: {
-  t: (k: TKeyStr) => string;
   onGoogle: () => void;
+  onApple: () => void;
+  onFacebook: () => void;
   onEmail: () => void;
 }) {
   return (
-    <>
-      <h2 className="mb-8 text-2xl font-black leading-tight text-[#004f32]">
-        {t("auth.title")}
-      </h2>
-      <div className="space-y-3">
-        <button
-          onClick={onGoogle}
-          className="flex w-full items-center justify-center gap-3 rounded-full border border-[#004f32] bg-white px-5 py-3.5 text-base font-bold text-[#004f32] transition hover:bg-slate-50"
-        >
-          <GoogleIcon className="h-5 w-5" />
-          {t("auth.continueGoogle")}
-        </button>
-        <button
-          onClick={onEmail}
-          className="flex w-full items-center justify-center gap-3 rounded-full border border-[#004f32] bg-white px-5 py-3.5 text-base font-bold text-[#004f32] transition hover:bg-slate-50"
-        >
-          <Mail className="h-5 w-5" />
-          {t("auth.continueEmail")}
-        </button>
+    <div className="space-y-2.5">
+      <SocialPill onClick={onGoogle} icon={<GoogleIcon className="h-5 w-5" />}>
+        Continue with Google
+      </SocialPill>
+      <SocialPill onClick={onApple} icon={<AppleIcon className="h-5 w-5" />}>
+        Continue with Apple
+      </SocialPill>
+      <SocialPill onClick={onFacebook} icon={<FacebookIcon className="h-5 w-5" />}>
+        Continue with Facebook
+      </SocialPill>
+
+      <div className="my-3 flex items-center gap-3 text-xs uppercase tracking-wider text-slate-500">
+        <div className="h-px flex-1 bg-slate-200" />
+        <span>or</span>
+        <div className="h-px flex-1 bg-slate-200" />
       </div>
-    </>
+
+      <SocialPill onClick={onEmail} icon={<Mail className="h-5 w-5" />}>
+        Continue with email
+      </SocialPill>
+    </div>
   );
 }
 
-function SignInView({
-  t,
-  onSubmit,
-  onSwitchToJoin,
-}: {
-  t: (k: TKeyStr) => string;
-  onSubmit: (email: string) => void;
-  onSwitchToJoin: () => void;
-}) {
+function EmailView({ onSubmit }: { onSubmit: (email: string) => void }) {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const valid = validEmail && password.length > 0;
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   return (
-    <>
-      <h2 className="mb-6 text-2xl font-black leading-tight text-[#004f32]">
-        {t("auth.welcomeBack")}
-      </h2>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (valid) onSubmit(email);
-        }}
-        className="space-y-4"
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (valid) onSubmit(email);
+      }}
+      className="space-y-4"
+    >
+      <label className="block">
+        <span className="mb-1 block text-sm font-bold text-slate-800">Email address</span>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+          autoComplete="email"
+          autoFocus
+          required
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={!valid}
+        className="w-full rounded-full bg-slate-900 px-6 py-3.5 text-base font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <LabeledInput label={t("auth.email")}>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={t("auth.emailPlaceholder")}
-            className={`${textFieldCls} ph-no-capture`}
-            data-ph-no-capture
-            autoComplete="email"
-            required
-          />
-        </LabeledInput>
-
-        <LabeledInput label={t("auth.password")}>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={t("auth.password")}
-              className={`${textFieldCls} pr-10 ph-no-capture`}
-              data-ph-no-capture
-              autoComplete="current-password"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"
-            >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </button>
-          </div>
-        </LabeledInput>
-
-        <button
-          type="button"
-          className="text-sm font-bold text-[#004f32] hover:underline"
-        >
-          {t("auth.forgotPassword")}
-        </button>
-
-        <button
-          type="submit"
-          disabled={!valid}
-          className="mt-2 w-full rounded-full bg-[#004f32] px-6 py-3.5 text-base font-bold text-white transition hover:bg-[#003b26] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {t("auth.signIn")}
-        </button>
-      </form>
-
-      <div className="my-5 flex items-center gap-3 text-sm text-slate-600">
-        <div className="h-px flex-1 bg-slate-200" />
-        <span>{t("auth.notMember")}</span>
-        <div className="h-px flex-1 bg-slate-200" />
-      </div>
-
-      <p className="text-center text-sm text-slate-700">
-        <button
-          onClick={onSwitchToJoin}
-          className="font-bold text-[#004f32] underline hover:no-underline"
-        >
-          {t("auth.joinLink")}
-        </button>{" "}
-        to unlock the best of VoyPilot.
+        Continue
+      </button>
+      <p className="text-center text-xs text-slate-500">
+        We&apos;ll create your account automatically if it&apos;s your first time.
       </p>
-    </>
+    </form>
   );
 }
 
-function JoinView({
-  t,
-  onSubmit,
-  onSwitchToSignIn,
-}: {
-  t: (k: TKeyStr) => string;
-  onSubmit: (first: string, last: string, email: string) => void;
-  onSwitchToSignIn: () => void;
-}) {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const valid =
-    firstName.trim().length > 0 &&
-    lastName.trim().length > 0 &&
-    validEmail &&
-    password.length >= 6;
-
-  return (
-    <>
-      <h2 className="mb-6 text-2xl font-black leading-tight text-[#004f32]">
-        {t("auth.joinTitle")}
-      </h2>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (valid) onSubmit(firstName, lastName, email);
-        }}
-        className="space-y-4"
-      >
-        <div className="grid grid-cols-2 gap-3">
-          <LabeledInput label={t("auth.firstName")}>
-            <input
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder={t("auth.firstName")}
-              className={textFieldCls}
-              required
-            />
-          </LabeledInput>
-          <LabeledInput label={t("auth.lastName")}>
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder={t("auth.lastName")}
-              className={textFieldCls}
-              required
-            />
-          </LabeledInput>
-        </div>
-
-        <LabeledInput label={t("auth.email")}>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder={t("auth.emailPlaceholder")}
-            className={`${textFieldCls} ph-no-capture`}
-            data-ph-no-capture
-            autoComplete="email"
-            required
-          />
-        </LabeledInput>
-
-        <LabeledInput label={t("auth.createPassword")}>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={t("auth.password")}
-              className={`${textFieldCls} pr-10 ph-no-capture`}
-              data-ph-no-capture
-              autoComplete="new-password"
-              required
-              minLength={6}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-900"
-            >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </button>
-          </div>
-        </LabeledInput>
-
-        <button
-          type="submit"
-          disabled={!valid}
-          className="mt-2 w-full rounded-full bg-[#004f32] px-6 py-3.5 text-base font-bold text-white transition hover:bg-[#003b26] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {t("auth.joinAction")}
-        </button>
-      </form>
-
-      <div className="my-5 flex items-center gap-3 text-sm text-slate-600">
-        <div className="h-px flex-1 bg-slate-200" />
-        <span>{t("auth.alreadyMember")}</span>
-        <div className="h-px flex-1 bg-slate-200" />
-      </div>
-
-      <p className="text-center text-sm text-slate-700">
-        <button
-          onClick={onSwitchToSignIn}
-          className="font-bold text-[#004f32] underline hover:no-underline"
-        >
-          {t("auth.signInLink")}
-        </button>{" "}
-        using your VoyPilot account.
-      </p>
-    </>
-  );
-}
-
-function LabeledInput({
-  label,
+function SocialPill({
+  onClick,
+  icon,
   children,
 }: {
-  label: string;
+  onClick: () => void;
+  icon: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-sm font-bold text-[#004f32]">
-        {label}
-      </span>
-      {children}
-    </label>
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative flex w-full items-center gap-3 rounded-full border border-slate-300 bg-white px-5 py-3 text-base font-semibold text-slate-900 transition hover:border-slate-900 hover:bg-slate-50"
+    >
+      <span className="flex h-5 w-5 items-center justify-center">{icon}</span>
+      <span className="flex-1 text-center">{children}</span>
+      <span className="h-5 w-5" />
+    </button>
   );
 }
 
@@ -373,10 +205,10 @@ function LegalFooter({ t }: { t: (k: TKeyStr) => string }) {
   );
 }
 
-function OwlLogo() {
+function BrandLogo() {
   return (
     <div
-      className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-yellow-400 text-4xl shadow-md ring-2 ring-amber-200"
+      className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-yellow-400 text-3xl shadow-md ring-2 ring-amber-200"
       aria-hidden
     >
       🧳
@@ -395,7 +227,21 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-const textFieldCls =
-  "w-full rounded-lg border border-slate-300 bg-[#f4f4f0] px-3 py-2.5 text-sm text-slate-900 focus:border-[#004f32] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#004f32]";
+function AppleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+      <path d="M16.365 1.43c0 1.14-.46 2.27-1.21 3.07-.78.83-2.06 1.49-3.13 1.4-.13-1.13.47-2.31 1.18-3.07.79-.85 2.13-1.49 3.16-1.4zM21 17.6c-.5 1.13-.74 1.64-1.39 2.65-.91 1.4-2.19 3.14-3.78 3.16-1.41.01-1.78-.92-3.7-.91-1.92.01-2.32.93-3.74.92-1.59-.01-2.8-1.59-3.71-2.99C2.04 16.5 1.74 11.74 3.31 9.16c1.12-1.85 2.89-2.93 4.55-2.93 1.69 0 2.76.93 4.16.93 1.36 0 2.18-.93 4.14-.93 1.48 0 3.05.81 4.16 2.21-3.66 2-3.07 7.23.68 9.16z" />
+    </svg>
+  );
+}
+
+function FacebookIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className}>
+      <path fill="#1877F2" d="M24 12.07A12 12 0 1 0 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.8-4.69 4.55-4.69 1.32 0 2.7.24 2.7.24v2.97h-1.52c-1.5 0-1.97.93-1.97 1.89v2.26h3.35l-.54 3.49h-2.81V24A12 12 0 0 0 24 12.07z" />
+      <path fill="#fff" d="M16.69 15.56l.54-3.49h-3.35V9.81c0-.96.47-1.89 1.97-1.89h1.52V4.95s-1.38-.24-2.7-.24c-2.75 0-4.55 1.67-4.55 4.69v2.66H7.08v3.49h3.05V24a12.04 12.04 0 0 0 3.75 0v-8.44h2.81z" />
+    </svg>
+  );
+}
 
 type TKeyStr = Parameters<ReturnType<typeof useT>["t"]>[0];
