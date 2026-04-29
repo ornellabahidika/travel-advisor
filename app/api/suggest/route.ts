@@ -118,17 +118,24 @@ export async function POST(req: Request): Promise<Response> {
 
   let searchResults;
   try {
-    searchResults = await Promise.all(
-      queries.slice(0, 3).map((q) =>
-        tavilyClient.search(q, {
-          searchDepth: "basic",
-          maxResults: 4,
-          includeImages: true,
-          includeImageDescriptions: true,
-          includeAnswer: false,
-        }),
-      ),
+    // Cap Tavily wall-clock at 25s so Claude still has ≥30s of the 60s budget.
+    const tavilyTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Tavily timed out after 25s")), 25_000),
     );
+    searchResults = (await Promise.race([
+      Promise.all(
+        queries.slice(0, 2).map((q) =>
+          tavilyClient.search(q, {
+            searchDepth: "basic",
+            maxResults: 3,
+            includeImages: true,
+            includeImageDescriptions: true,
+            includeAnswer: false,
+          }),
+        ),
+      ),
+      tavilyTimeout,
+    ])) as Awaited<ReturnType<typeof tavilyClient.search>>[];
   } catch (err) {
     return Response.json(
       {
@@ -148,7 +155,7 @@ export async function POST(req: Request): Promise<Response> {
         sources.push({
           title: item.title,
           url: item.url,
-          content: item.content?.slice(0, 1200) ?? "",
+          content: item.content?.slice(0, 700) ?? "",
         });
       }
     }
@@ -186,13 +193,13 @@ export async function POST(req: Request): Promise<Response> {
       vibe: input.vibe || null,
       constraints: input.constraints || null,
     },
-    sources: sources.map((s, i) => ({
+    sources: sources.slice(0, 12).map((s, i) => ({
       index: i,
       title: s.title,
       url: s.url,
       excerpt: s.content,
     })),
-    images: images.map((img, i) => ({
+    images: images.slice(0, 16).map((img, i) => ({
       index: i,
       description: img.description,
     })),
@@ -204,7 +211,7 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const response = await anthropic.messages.parse({
       model: "claude-haiku-4-5",
-      max_tokens: 12000,
+      max_tokens: 4096,
       output_config: {
         format: zodOutputFormat(SuggestSchema),
       },
