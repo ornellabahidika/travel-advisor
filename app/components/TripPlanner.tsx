@@ -42,6 +42,8 @@ import {
   Plus,
   Minus,
   Trash2,
+  ChevronDown,
+  ArrowRight,
 } from "lucide-react";
 import type {
   BudgetBreakdown,
@@ -92,6 +94,23 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
   const [error, setError] = useState<string | null>(null);
   const [activeDay, setActiveDay] = useState(1);
   const [activeSection, setActiveSection] = useState("overview");
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    () => new Set(["overview"]),
+  );
+  const toggleSection = (id: string) =>
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const openSectionAndScroll = (id: string) => {
+    setOpenSections((prev) => new Set(prev).add(id));
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
   const [joinTarget, setJoinTarget] = useState<GroupTrip | null>(null);
   const [showThings, setShowThings] = useState(false);
   const [showRestaurants, setShowRestaurants] = useState(false);
@@ -210,6 +229,36 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
   const activeDayData =
     details.itinerary.find((d) => d.day === activeDay) ?? details.itinerary[0];
 
+  // Order in which sections appear on the page; conditional sections drop
+  // out so "Continue →" walks across only the ones that actually render.
+  const presentSections: string[] = ["overview", "flights", "hotels"];
+  if (details.transportation.length > 0) presentSections.push("transport");
+  presentSections.push("itinerary");
+  if (details.events.length > 0) presentSections.push("events");
+  presentSections.push("reviews");
+  if (details.groupTrips.length > 0 || hosted.length > 0)
+    presentSections.push("travelers");
+  if (details.insiderTips.length > 0) presentSections.push("tips");
+
+  const sectionLabel = (id: string): string => {
+    if (id === "overview") return t("trip.overview");
+    if (id === "flights") return t("trip.flights");
+    if (id === "hotels") return t("trip.hotels");
+    if (id === "transport") return t("transport.title");
+    if (id === "itinerary") return t("trip.itinerary");
+    if (id === "events") return t("trip.events");
+    if (id === "reviews") return t("trip.reviews");
+    if (id === "travelers") return t("trip.travelers");
+    if (id === "tips") return t("trip.tips");
+    return id;
+  };
+  const nextOf = (id: string): string | null => {
+    const i = presentSections.indexOf(id);
+    return i >= 0 && i < presentSections.length - 1
+      ? presentSections[i + 1]
+      : null;
+  };
+
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Hero */}
@@ -265,34 +314,58 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
       {/* Sticky section nav */}
       <nav className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 sm:px-6">
-          <SectionTab href="#overview" active={activeSection === "overview"} label={t("trip.overview")} />
-          <SectionTab href="#flights" active={activeSection === "flights"} label={t("trip.flights")} />
-          <SectionTab href="#hotels" active={activeSection === "hotels"} label={t("trip.hotels")} />
+          <SectionTab
+            active={activeSection === "overview"}
+            label={t("trip.overview")}
+            onClick={() => openSectionAndScroll("overview")}
+          />
+          <SectionTab
+            active={activeSection === "flights"}
+            label={t("trip.flights")}
+            onClick={() => openSectionAndScroll("flights")}
+          />
+          <SectionTab
+            active={activeSection === "hotels"}
+            label={t("trip.hotels")}
+            onClick={() => openSectionAndScroll("hotels")}
+          />
           {details.transportation.length > 0 && (
             <SectionTab
-              href="#transport"
               active={activeSection === "transport"}
               label={t("transport.title")}
-            />
-          )}
-          <SectionTab href="#itinerary" active={activeSection === "itinerary"} label={t("trip.itinerary")} />
-          {details.events.length > 0 && (
-            <SectionTab
-              href="#events"
-              active={activeSection === "events"}
-              label={`${t("trip.events")} (${details.events.length})`}
+              onClick={() => openSectionAndScroll("transport")}
             />
           )}
           <SectionTab
-            href="#reviews"
+            active={activeSection === "itinerary"}
+            label={t("trip.itinerary")}
+            onClick={() => openSectionAndScroll("itinerary")}
+          />
+          {details.events.length > 0 && (
+            <SectionTab
+              active={activeSection === "events"}
+              label={`${t("trip.events")} (${details.events.length})`}
+              onClick={() => openSectionAndScroll("events")}
+            />
+          )}
+          <SectionTab
             active={activeSection === "reviews"}
             label={`${t("trip.reviews")} (${details.reviews.totalCount})`}
+            onClick={() => openSectionAndScroll("reviews")}
           />
           {details.groupTrips.length > 0 && (
-            <SectionTab href="#travelers" active={activeSection === "travelers"} label={t("trip.travelers")} />
+            <SectionTab
+              active={activeSection === "travelers"}
+              label={t("trip.travelers")}
+              onClick={() => openSectionAndScroll("travelers")}
+            />
           )}
           {details.insiderTips.length > 0 && (
-            <SectionTab href="#tips" active={activeSection === "tips"} label={t("trip.tips")} />
+            <SectionTab
+              active={activeSection === "tips"}
+              label={t("trip.tips")}
+              onClick={() => openSectionAndScroll("tips")}
+            />
           )}
         </div>
       </nav>
@@ -322,7 +395,11 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             icon={<Plane className="h-5 w-5" />}
             title={t("trip.flights")}
             subtitle={t("trip.cheapestFirst")}
+            badge={`${details.flights.length} options`}
+            open={openSections.has("flights")}
+            onToggle={() => toggleSection("flights")}
           />
+          {openSections.has("flights") && (
           <div className="space-y-3">
             {details.flights.map((f, i) => (
               <div
@@ -379,6 +456,13 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               </div>
             ))}
           </div>
+          )}
+          {openSections.has("flights") && nextOf("flights") && (
+            <NextSectionButton
+              label={sectionLabel(nextOf("flights")!)}
+              onClick={() => openSectionAndScroll(nextOf("flights")!)}
+            />
+          )}
         </section>
 
         {/* Hotels */}
@@ -387,7 +471,11 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             icon={<Hotel className="h-5 w-5" />}
             title={t("trip.hotels")}
             subtitle={t("trip.perNight")}
+            badge={`${details.hotels.length} stays`}
+            open={openSections.has("hotels")}
+            onToggle={() => toggleSection("hotels")}
           />
+          {openSections.has("hotels") && (
           <div className="grid gap-4 sm:grid-cols-2">
             {details.hotels.map((h, i) => (
               <div
@@ -460,6 +548,13 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               </div>
             ))}
           </div>
+          )}
+          {openSections.has("hotels") && nextOf("hotels") && (
+            <NextSectionButton
+              label={sectionLabel(nextOf("hotels")!)}
+              onClick={() => openSectionAndScroll(nextOf("hotels")!)}
+            />
+          )}
         </section>
 
         {/* Transportation */}
@@ -469,12 +564,23 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               icon={<Bus className="h-5 w-5" />}
               title={t("transport.title")}
               subtitle={t("transport.subtitle", { name: input.name })}
+              badge={`${details.transportation.length} options`}
+              open={openSections.has("transport")}
+              onToggle={() => toggleSection("transport")}
             />
-            <div className="grid gap-4 sm:grid-cols-2">
-              {details.transportation.map((opt) => (
-                <TransportCard key={opt.id} option={opt} />
-              ))}
-            </div>
+            {openSections.has("transport") && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {details.transportation.map((opt) => (
+                  <TransportCard key={opt.id} option={opt} />
+                ))}
+              </div>
+            )}
+            {openSections.has("transport") && nextOf("transport") && (
+              <NextSectionButton
+                label={sectionLabel(nextOf("transport")!)}
+                onClick={() => openSectionAndScroll(nextOf("transport")!)}
+              />
+            )}
           </section>
         )}
 
@@ -484,7 +590,12 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             icon={<Calendar className="h-5 w-5" />}
             title={t("trip.yourItinerary", { name: input.name })}
             subtitle={t("trip.daysTailored", { n: details.itinerary.length })}
+            badge={`${details.itinerary.length} days`}
+            open={openSections.has("itinerary")}
+            onToggle={() => toggleSection("itinerary")}
           />
+          {openSections.has("itinerary") && (
+          <>
 
           {/* Day tabs */}
           <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
@@ -607,6 +718,14 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               )}
             </div>
           )}
+          </>
+          )}
+          {openSections.has("itinerary") && nextOf("itinerary") && (
+            <NextSectionButton
+              label={sectionLabel(nextOf("itinerary")!)}
+              onClick={() => openSectionAndScroll(nextOf("itinerary")!)}
+            />
+          )}
         </section>
 
         {/* Events during your trip */}
@@ -616,12 +735,23 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               icon={<Ticket className="h-5 w-5" />}
               title={t("trip.eventsTitle")}
               subtitle={t("trip.eventsSub", { n: details.events.length })}
+              badge={`${details.events.length} events`}
+              open={openSections.has("events")}
+              onToggle={() => toggleSection("events")}
             />
-            <div className="grid gap-4 sm:grid-cols-2">
-              {details.events.map((e) => (
-                <EventCard key={e.id} event={e} />
-              ))}
-            </div>
+            {openSections.has("events") && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {details.events.map((e) => (
+                  <EventCard key={e.id} event={e} />
+                ))}
+              </div>
+            )}
+            {openSections.has("events") && nextOf("events") && (
+              <NextSectionButton
+                label={sectionLabel(nextOf("events")!)}
+                onClick={() => openSectionAndScroll(nextOf("events")!)}
+              />
+            )}
           </section>
         )}
 
@@ -631,56 +761,79 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             icon={<MessageSquare className="h-5 w-5" />}
             title={t("trip.whatTravelersSay")}
             subtitle={t("trip.reviewsCount", { n: details.reviews.totalCount.toLocaleString() })}
+            badge={`${details.reviews.totalCount.toLocaleString()} reviews`}
+            open={openSections.has("reviews")}
+            onToggle={() => toggleSection("reviews")}
           />
-          <ReviewsSummary summary={details.reviews} />
+          {openSections.has("reviews") && (
+            <ReviewsSummary summary={details.reviews} />
+          )}
+          {openSections.has("reviews") && nextOf("reviews") && (
+            <NextSectionButton
+              label={sectionLabel(nextOf("reviews")!)}
+              onClick={() => openSectionAndScroll(nextOf("reviews")!)}
+            />
+          )}
         </section>
 
         {/* Travelers heading there */}
         {(details.groupTrips.length > 0 || hosted.length > 0) && (
           <section id="travelers" className="scroll-mt-20">
-            <div className="mb-5 flex items-end justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 text-slate-900 dark:text-slate-50">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                    <Users className="h-5 w-5" />
-                  </div>
-                  <h2 className="text-2xl font-bold">{t("trip.travelersTitle")}</h2>
+            <SectionHeader
+              icon={<Users className="h-5 w-5" />}
+              title={t("trip.travelersTitle")}
+              subtitle={t("trip.travelersSub")}
+              badge={`${details.groupTrips.length + hosted.length} groups`}
+              open={openSections.has("travelers")}
+              onToggle={() => toggleSection("travelers")}
+              actionRight={
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowHostModal(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#34e0a1] px-4 py-2 text-sm font-black text-slate-900 transition hover:bg-[#2ccb91]"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t("host.button")}
+                </button>
+              }
+            />
+            {openSections.has("travelers") && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {hosted.map((g) => (
+                    <GroupTripCard
+                      key={g.id}
+                      group={g}
+                      onJoin={() => undefined}
+                      hostedByMe
+                      onDelete={() => removeHosted(g.id)}
+                      pendingRequests={g.requests.filter((r) => r.status === "pending").length}
+                      onViewRequests={() =>
+                        setRequestsTarget({
+                          tripId: g.id,
+                          hostName: g.hostName,
+                          requests: g.requests,
+                        })
+                      }
+                    />
+                  ))}
+                  {details.groupTrips.map((g) => (
+                    <GroupTripCard key={g.id} group={g} onJoin={() => setJoinTarget(g)} />
+                  ))}
                 </div>
-                <p className="mt-1 text-sm text-slate-500">{t("trip.travelersSub")}</p>
-              </div>
-              <button
-                onClick={() => setShowHostModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#34e0a1] px-4 py-2.5 text-sm font-black text-slate-900 transition hover:bg-[#2ccb91]"
-              >
-                <Plus className="h-4 w-4" />
-                {t("host.button")}
-              </button>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {hosted.map((g) => (
-                <GroupTripCard
-                  key={g.id}
-                  group={g}
-                  onJoin={() => undefined}
-                  hostedByMe
-                  onDelete={() => removeHosted(g.id)}
-                  pendingRequests={g.requests.filter((r) => r.status === "pending").length}
-                  onViewRequests={() =>
-                    setRequestsTarget({
-                      tripId: g.id,
-                      hostName: g.hostName,
-                      requests: g.requests,
-                    })
-                  }
-                />
-              ))}
-              {details.groupTrips.map((g) => (
-                <GroupTripCard key={g.id} group={g} onJoin={() => setJoinTarget(g)} />
-              ))}
-            </div>
-            <p className="mt-4 text-xs text-slate-500">
-              Group trips are demo listings. Real matchmaking + messaging coming soon.
-            </p>
+                <p className="mt-4 text-xs text-slate-500">
+                  Group trips are demo listings. Real matchmaking + messaging coming soon.
+                </p>
+              </>
+            )}
+            {openSections.has("travelers") && nextOf("travelers") && (
+              <NextSectionButton
+                label={sectionLabel(nextOf("travelers")!)}
+                onClick={() => openSectionAndScroll(nextOf("travelers")!)}
+              />
+            )}
           </section>
         )}
 
@@ -691,17 +844,22 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               icon={<Lightbulb className="h-5 w-5" />}
               title={t("trip.insiderTips")}
               subtitle={t("trip.guideMiss")}
+              badge={`${details.insiderTips.length} tips`}
+              open={openSections.has("tips")}
+              onToggle={() => toggleSection("tips")}
             />
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {details.insiderTips.map((tip, i) => (
-                <li
-                  key={i}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
-                >
-                  {tip}
-                </li>
-              ))}
-            </ul>
+            {openSections.has("tips") && (
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {details.insiderTips.map((tip, i) => (
+                  <li
+                    key={i}
+                    className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                  >
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )}
       </div>
@@ -2092,17 +2250,18 @@ function avatarColor(name: string): string {
 }
 
 function SectionTab({
-  href,
   active,
   label,
+  onClick,
 }: {
-  href: string;
   active: boolean;
   label: string;
+  onClick: () => void;
 }) {
   return (
-    <a
-      href={href}
+    <button
+      type="button"
+      onClick={onClick}
       className={`shrink-0 border-b-2 px-4 py-3 text-sm font-bold transition ${
         active
           ? "border-[#34e0a1] text-slate-900"
@@ -2110,7 +2269,28 @@ function SectionTab({
       }`}
     >
       {label}
-    </a>
+    </button>
+  );
+}
+
+function NextSectionButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <div className="mt-6 flex justify-end">
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800"
+      >
+        Continue to {label}
+        <ArrowRight className="h-4 w-4" />
+      </button>
+    </div>
   );
 }
 
@@ -2118,11 +2298,60 @@ function SectionHeader({
   icon,
   title,
   subtitle,
+  badge,
+  open,
+  onToggle,
+  actionRight,
 }: {
   icon: React.ReactNode;
   title: string;
   subtitle?: string;
+  badge?: string;
+  open?: boolean;
+  onToggle?: () => void;
+  actionRight?: React.ReactNode;
 }) {
+  // When onToggle is provided, the whole header becomes a clickable accordion
+  // row; otherwise it falls back to the original static header layout.
+  if (onToggle) {
+    return (
+      <div
+        className={`flex items-stretch overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition dark:border-slate-800 dark:bg-slate-900 ${open ? "mb-5" : ""}`}
+      >
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="flex flex-1 items-center gap-3 px-4 py-4 text-left transition hover:bg-slate-50 sm:px-5 dark:hover:bg-slate-800/60"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+            {icon}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="truncate text-lg font-bold text-slate-900 sm:text-xl dark:text-slate-50">
+                {title}
+              </h2>
+              {badge && (
+                <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  {badge}
+                </span>
+              )}
+            </div>
+            {subtitle && (
+              <p className="mt-0.5 truncate text-sm text-slate-500">{subtitle}</p>
+            )}
+          </div>
+          <ChevronDown
+            className={`h-5 w-5 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        </button>
+        {actionRight && open && (
+          <div className="flex items-center pr-3 sm:pr-5">{actionRight}</div>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="mb-5 flex items-end justify-between gap-4">
       <div>
