@@ -307,6 +307,11 @@ export async function POST(req: Request): Promise<Response> {
       };
 
       try {
+        // Tell the client we're alive immediately. Also forces the response
+        // headers to flush so the browser doesn't sit on an empty stream
+        // until the first real event arrives.
+        send("ping", { stage: "synthesizing" });
+
         const claudeStream = anthropic.messages.stream({
           model: "claude-haiku-4-5",
           max_tokens: 4096,
@@ -333,24 +338,38 @@ export async function POST(req: Request): Promise<Response> {
         let emitted = 0;
 
         for await (const event of claudeStream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta?.type === "text_delta"
-          ) {
-            buffer += event.delta.text;
-            const { newObjectStrings, nextCursor } =
-              extractCompletedDestinations(buffer, cursor);
-            cursor = nextCursor;
-            for (const objStr of newObjectStrings) {
-              try {
-                const parsed = DestinationFromAI.parse(JSON.parse(objStr));
-                const mapped = mapDestination(parsed, sources, images);
-                send("destination", { destination: mapped, index: emitted });
-                emitted++;
-              } catch {
-                // Skip objects that don't match (rare — Claude sometimes
-                // emits malformed JSON on the first attempt before recovering).
-              }
+          if (event.type !== "content_block_delta") continue;
+          // Structured output (output_config + zodOutputFormat) streams as
+          // input_json_delta with partial_json chunks. Plain text mode would
+          // stream text_delta. Handle both so we don't get caught out if the
+          // SDK shape shifts.
+          let chunk = "";
+          const delta = event.delta as {
+            type?: string;
+            text?: string;
+            partial_json?: string;
+          };
+          if (delta?.type === "input_json_delta" && delta.partial_json) {
+            chunk = delta.partial_json;
+          } else if (delta?.type === "text_delta" && delta.text) {
+            chunk = delta.text;
+          }
+          if (!chunk) continue;
+          buffer += chunk;
+          const { newObjectStrings, nextCursor } = extractCompletedDestinations(
+            buffer,
+            cursor,
+          );
+          cursor = nextCursor;
+          for (const objStr of newObjectStrings) {
+            try {
+              const parsed = DestinationFromAI.parse(JSON.parse(objStr));
+              const mapped = mapDestination(parsed, sources, images);
+              send("destination", { destination: mapped, index: emitted });
+              emitted++;
+            } catch {
+              // Skip objects that don't match (rare — Claude sometimes
+              // emits malformed JSON on the first attempt before recovering).
             }
           }
         }
@@ -378,6 +397,11 @@ export async function POST(req: Request): Promise<Response> {
       "content-type": "text/event-stream",
       "cache-control": "no-cache, no-transform",
       connection: "keep-alive",
+      // Tell Vercel/upstream proxies not to buffer the SSE response.
+      // Without this, gzip + edge buffering can hold all events until
+      // the response closes, defeating streaming entirely.
+      "x-accel-buffering": "no",
+      "content-encoding": "identity",
     },
   });
 }
