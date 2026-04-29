@@ -67,10 +67,101 @@ const DestinationFromAI = z.object({
   imageIndices: z.array(z.number().int()),
 });
 
+// destinations comes BEFORE reasoning in the schema so Claude emits the
+// first card almost immediately — reasoning is a long block that would
+// otherwise delay time-to-first-result by several seconds.
 const SuggestSchema = z.object({
-  reasoning: z.string(),
   destinations: z.array(DestinationFromAI),
+  reasoning: z.string(),
 });
+
+// Walk the streamed JSON buffer and pull out completed objects from the
+// top-level "destinations": [...] array. Brace-counts with full awareness
+// of strings and escape sequences, so braces inside string literals don't
+// confuse the depth tracker.
+function extractCompletedDestinations(
+  buffer: string,
+  cursor: number,
+): { newObjectStrings: string[]; nextCursor: number; arrayStarted: boolean } {
+  const arrayMarker = /"destinations"\s*:\s*\[/;
+  const m = buffer.match(arrayMarker);
+  if (!m || m.index === undefined) {
+    return { newObjectStrings: [], nextCursor: cursor, arrayStarted: false };
+  }
+  const arrayContentStart = m.index + m[0].length;
+  let i = Math.max(cursor, arrayContentStart);
+
+  const newObjects: string[] = [];
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let objectStart = -1;
+  let lastClosedAt = i;
+
+  while (i < buffer.length) {
+    const ch = buffer[i];
+    if (escape) {
+      escape = false;
+    } else if (inString) {
+      if (ch === "\\") escape = true;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      if (depth === 0) objectStart = i;
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0 && objectStart !== -1) {
+        newObjects.push(buffer.slice(objectStart, i + 1));
+        objectStart = -1;
+        lastClosedAt = i + 1;
+      }
+    } else if (ch === "]" && depth === 0) {
+      break;
+    }
+    i++;
+  }
+
+  return {
+    newObjectStrings: newObjects,
+    nextCursor: lastClosedAt,
+    arrayStarted: true,
+  };
+}
+
+function mapDestination(
+  d: z.infer<typeof DestinationFromAI>,
+  sources: { title: string; url: string; content: string }[],
+  images: { url: string; description: string }[],
+): Destination {
+  const cardImages = d.imageIndices
+    .filter((i) => i >= 0 && i < images.length)
+    .slice(0, 4)
+    .map((i) => ({
+      url: images[i].url,
+      alt: images[i].description || `${d.name}, ${d.country}`,
+    }));
+  const cardSources = d.sourceIndices
+    .filter((i) => i >= 0 && i < sources.length)
+    .slice(0, 5)
+    .map((i) => ({ title: sources[i].title, url: sources[i].url }));
+  return {
+    name: d.name,
+    country: d.country,
+    matchScore: Math.max(0, Math.min(100, d.matchScore)),
+    whyItMatches: d.whyItMatches,
+    vibe: d.vibe,
+    liveSignals: d.liveSignals,
+    counterSuggestion: d.counterSuggestion ?? undefined,
+    estimatedCost: d.estimatedCost,
+    bestTimeNote: d.bestTimeNote,
+    flightEstimate: d.flightEstimate,
+    hotelNightEstimate: d.hotelNightEstimate,
+    images: cardImages,
+    sources: cardSources,
+  };
+}
 
 export async function POST(req: Request): Promise<Response> {
   const rl = rateLimit(`suggest:${clientIp(req)}`, 5, 60_000);
@@ -118,7 +209,6 @@ export async function POST(req: Request): Promise<Response> {
 
   let searchResults;
   try {
-    // Cap Tavily wall-clock at 25s so Claude still has ≥30s of the 60s budget.
     const tavilyTimeout = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Tavily timed out after 25s")), 25_000),
     );
@@ -207,86 +297,87 @@ export async function POST(req: Request): Promise<Response> {
 
   const anthropic = new Anthropic();
 
-  let parsed;
-  try {
-    const response = await anthropic.messages.parse({
-      model: "claude-haiku-4-5",
-      max_tokens: 4096,
-      output_config: {
-        format: zodOutputFormat(SuggestSchema),
-      },
-      system: [
-        {
-          type: "text",
-          text: SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      messages: [
-        {
-          role: "user",
-          content: `Here is the user's travel request and the live web data I gathered. Recommend 4-5 destinations.\n\n${JSON.stringify(userPayload)}`,
-        },
-      ],
-    });
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      const send = (event: string, data: unknown) => {
+        controller.enqueue(
+          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+        );
+      };
 
-    parsed = response.parsed_output;
-    if (!parsed) {
-      return Response.json(
-        { ok: false, error: "Model returned no structured output." } satisfies SuggestResponse,
-        { status: 502 },
-      );
-    }
-  } catch (err) {
-    if (err instanceof Anthropic.APIError) {
-      return Response.json(
-        { ok: false, error: `Claude API error (${err.status}): ${err.message}` } satisfies SuggestResponse,
-        { status: 502 },
-      );
-    }
-    return Response.json(
-      {
-        ok: false,
-        error: err instanceof Error ? err.message : "Synthesis failed",
-      } satisfies SuggestResponse,
-      { status: 500 },
-    );
-  }
+      try {
+        const claudeStream = anthropic.messages.stream({
+          model: "claude-haiku-4-5",
+          max_tokens: 4096,
+          output_config: {
+            format: zodOutputFormat(SuggestSchema),
+          },
+          system: [
+            {
+              type: "text",
+              text: SYSTEM_PROMPT,
+              cache_control: { type: "ephemeral" },
+            },
+          ],
+          messages: [
+            {
+              role: "user",
+              content: `Here is the user's travel request and the live web data I gathered. Recommend 4-5 destinations.\n\n${JSON.stringify(userPayload)}`,
+            },
+          ],
+        });
 
-  const destinations: Destination[] = parsed.destinations.map((d) => {
-    const cardImages = d.imageIndices
-      .filter((i) => i >= 0 && i < images.length)
-      .slice(0, 4)
-      .map((i) => ({
-        url: images[i].url,
-        alt: images[i].description || `${d.name}, ${d.country}`,
-      }));
+        let buffer = "";
+        let cursor = 0;
+        let emitted = 0;
 
-    const cardSources = d.sourceIndices
-      .filter((i) => i >= 0 && i < sources.length)
-      .slice(0, 5)
-      .map((i) => ({ title: sources[i].title, url: sources[i].url }));
+        for await (const event of claudeStream) {
+          if (
+            event.type === "content_block_delta" &&
+            event.delta?.type === "text_delta"
+          ) {
+            buffer += event.delta.text;
+            const { newObjectStrings, nextCursor } =
+              extractCompletedDestinations(buffer, cursor);
+            cursor = nextCursor;
+            for (const objStr of newObjectStrings) {
+              try {
+                const parsed = DestinationFromAI.parse(JSON.parse(objStr));
+                const mapped = mapDestination(parsed, sources, images);
+                send("destination", { destination: mapped, index: emitted });
+                emitted++;
+              } catch {
+                // Skip objects that don't match (rare — Claude sometimes
+                // emits malformed JSON on the first attempt before recovering).
+              }
+            }
+          }
+        }
 
-    return {
-      name: d.name,
-      country: d.country,
-      matchScore: Math.max(0, Math.min(100, d.matchScore)),
-      whyItMatches: d.whyItMatches,
-      vibe: d.vibe,
-      liveSignals: d.liveSignals,
-      counterSuggestion: d.counterSuggestion ?? undefined,
-      estimatedCost: d.estimatedCost,
-      bestTimeNote: d.bestTimeNote,
-      flightEstimate: d.flightEstimate,
-      hotelNightEstimate: d.hotelNightEstimate,
-      images: cardImages,
-      sources: cardSources,
-    };
+        const finalMessage = await claudeStream.finalMessage();
+        const parsed = finalMessage.parsed_output as
+          | z.infer<typeof SuggestSchema>
+          | undefined;
+        send("done", {
+          reasoning: parsed?.reasoning ?? "",
+          totalCount: emitted,
+        });
+      } catch (err) {
+        send("error", {
+          message: err instanceof Error ? err.message : "Synthesis failed",
+        });
+      } finally {
+        controller.close();
+      }
+    },
   });
 
-  return Response.json({
-    ok: true,
-    destinations,
-    reasoning: parsed.reasoning,
-  } satisfies SuggestResponse);
+  return new Response(stream, {
+    headers: {
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache, no-transform",
+      connection: "keep-alive",
+    },
+  });
 }

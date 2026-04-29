@@ -163,11 +163,67 @@ export function Advisor() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data: SuggestResponse = await res.json();
-      if (!data.ok) setError(data.error);
-      else {
-        setDestinations(data.destinations);
-        setReasoning(data.reasoning);
+      // Server may still respond with JSON for early errors (rate limit, validation).
+      const ctype = res.headers.get("content-type") ?? "";
+      if (!ctype.includes("text/event-stream")) {
+        const data: SuggestResponse = await res.json();
+        if (!data.ok) setError(data.error);
+        else {
+          setDestinations(data.destinations);
+          setReasoning(data.reasoning);
+        }
+        setLoading(false);
+        return;
+      }
+
+      // SSE stream — render destinations as they arrive.
+      if (!res.body) {
+        setError("Streaming not supported by this browser");
+        setLoading(false);
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      // Hide the spinner as soon as the first card lands.
+      let firstSeen = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() ?? "";
+        for (const ev of events) {
+          if (!ev.trim()) continue;
+          let eventName = "";
+          let dataStr = "";
+          for (const line of ev.split("\n")) {
+            if (line.startsWith("event:")) eventName = line.slice(6).trim();
+            else if (line.startsWith("data:")) dataStr = line.slice(5).trim();
+          }
+          if (!dataStr) continue;
+          let payload: unknown;
+          try {
+            payload = JSON.parse(dataStr);
+          } catch {
+            continue;
+          }
+          if (eventName === "destination") {
+            const { destination } = payload as { destination: Destination };
+            setDestinations((prev) => [...prev, destination]);
+            if (!firstSeen) {
+              firstSeen = true;
+              setLoading(false);
+            }
+          } else if (eventName === "done") {
+            const { reasoning } = payload as { reasoning: string };
+            setReasoning(reasoning);
+          } else if (eventName === "error") {
+            const { message } = payload as { message: string };
+            setError(message);
+          }
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
