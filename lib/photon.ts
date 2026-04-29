@@ -1,11 +1,17 @@
 // Free OpenStreetMap-backed geocoding (no API key, no signup).
 // Docs: https://photon.komoot.io
 //
-// Photon returns mixed POI types. We accept countries, settlements
-// (city/town/village/...), administrative areas (states/regions/cities
-// returned as boundaries), and airports — what travelers actually pick
-// as origins or destinations. We force lang=en so "Congo" returns
-// "Democratic Republic of the Congo" instead of the native French name.
+// We return structured options (name + sub-line + kind) so the UI can
+// render momondo-style two-line rows with type icons.
+
+export type PlaceKind = "city" | "country" | "airport";
+
+export type PlaceOption = {
+  value: string; // canonical string stored on the form
+  name: string; // bold primary line
+  sub?: string; // muted secondary line
+  kind: PlaceKind;
+};
 
 type PhotonFeature = {
   properties: {
@@ -30,34 +36,49 @@ const SETTLEMENT_VALUES = new Set([
   "neighbourhood",
 ]);
 
-function formatFeature(f: PhotonFeature): string | null {
+function joinNonEmpty(parts: (string | null | undefined)[], sep = ", "): string {
+  return parts.filter((p): p is string => Boolean(p && p.trim())).join(sep);
+}
+
+function formatFeature(f: PhotonFeature): PlaceOption | null {
   const p = f.properties;
   const name = p.name?.trim();
   if (!name) return null;
   const country = p.country?.trim();
+  const state = p.state?.trim();
+  const city = p.city?.trim();
 
-  // Airports
   if (p.osm_value === "aerodrome" || p.osm_value === "airport") {
-    const where = p.city ?? p.state ?? country;
+    const where = city ?? state ?? country;
     const isAirportNamed = /airport/i.test(name);
-    const label = isAirportNamed ? name : `${name} Airport`;
-    return `${label}${where && where !== name ? ` (${where})` : ""}${country ? ` · ${country}` : ""}`;
+    const display = isAirportNamed ? name : `${name} Airport`;
+    const sub = joinNonEmpty([
+      where && where !== name ? where : null,
+      country && country !== where ? country : null,
+    ]);
+    const value = joinNonEmpty([display, where && where !== name ? where : null, country]);
+    return { value, name: display, sub: sub || undefined, kind: "airport" };
   }
 
-  // Countries
   if (p.osm_value === "country") {
-    return name;
+    return { value: name, name, sub: "Country", kind: "country" };
   }
 
-  // Settlements + administrative areas (states, regions, cities returned as boundaries)
   if (
     SETTLEMENT_VALUES.has(p.osm_value ?? "") ||
     p.osm_value === "administrative" ||
     (p.osm_key === "place" && (p.type === "city" || p.type === "district"))
   ) {
-    const region = p.state && p.state !== name ? `, ${p.state}` : "";
-    const countryPart = country && country !== name ? `, ${country}` : "";
-    return `${name}${region}${countryPart}`;
+    const sub = joinNonEmpty([
+      state && state !== name ? state : null,
+      country && country !== name ? country : null,
+    ]);
+    const value = joinNonEmpty([
+      name,
+      state && state !== name ? state : null,
+      country && country !== name ? country : null,
+    ]);
+    return { value, name, sub: sub || undefined, kind: "city" };
   }
 
   return null;
@@ -67,7 +88,7 @@ export async function searchPlaces(
   query: string,
   signal?: AbortSignal,
   limit = 10,
-): Promise<string[]> {
+): Promise<PlaceOption[]> {
   const q = query.trim();
   if (q.length < 2) return [];
   try {
@@ -76,15 +97,19 @@ export async function searchPlaces(
     if (!res.ok) return [];
     const data = (await res.json()) as { features?: PhotonFeature[] };
     if (!data.features) return [];
-    const results: string[] = [];
+    const results: PlaceOption[] = [];
     const seen = new Set<string>();
     for (const f of data.features) {
-      const formatted = formatFeature(f);
-      if (formatted && !seen.has(formatted)) {
-        seen.add(formatted);
-        results.push(formatted);
+      const opt = formatFeature(f);
+      if (opt && !seen.has(opt.value)) {
+        seen.add(opt.value);
+        results.push(opt);
       }
     }
+    // Sort: countries first (when query matches a country), then cities, then airports.
+    // Momondo surfaces the most "general" choice (the country/city) first, airports below.
+    const order: Record<PlaceKind, number> = { country: 0, city: 1, airport: 2 };
+    results.sort((a, b) => order[a.kind] - order[b.kind]);
     return results.slice(0, limit);
   } catch {
     return [];
