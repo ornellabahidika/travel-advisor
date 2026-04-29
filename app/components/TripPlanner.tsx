@@ -97,6 +97,8 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
   const [openSections, setOpenSections] = useState<Set<string>>(
     () => new Set(["overview"]),
   );
+  const [loadingItinerary, setLoadingItinerary] = useState(true);
+  const [loadingGroupTrips, setLoadingGroupTrips] = useState(true);
   const toggleSection = (id: string) =>
     setOpenSections((prev) => {
       const next = new Set(prev);
@@ -172,16 +174,105 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify(input),
         });
-        const data: TripDetailsResponse = await res.json();
-        if (cancelled) return;
-        if (!data.ok) setError(data.error);
-        else {
-          setDetails(data.details);
+        const ctype = res.headers.get("content-type") ?? "";
+        // Plain JSON path (early errors: rate limit, validation, etc.)
+        if (!ctype.includes("text/event-stream")) {
+          const data: TripDetailsResponse = await res.json();
+          if (cancelled) return;
+          if (!data.ok) setError(data.error);
+          else setDetails(data.details);
+          return;
+        }
+        if (!res.body) {
+          if (!cancelled) setError("Streaming not supported by this browser");
+          return;
+        }
+
+        // SSE path. We accumulate sections as they arrive and call
+        // setDetails the moment we have core (so the page renders);
+        // itinerary and groupTrips fill in afterwards.
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        type Base = Pick<
+          TripDetails,
+          | "reviews"
+          | "events"
+          | "budgetBreakdown"
+          | "transportation"
+          | "thingsToDo"
+          | "restaurants"
+        >;
+        type Core = Pick<
+          TripDetails,
+          | "heroImage"
+          | "overview"
+          | "insiderTips"
+          | "totalEstimate"
+          | "flights"
+          | "hotels"
+        >;
+        let baseData: Base | null = null;
+        let coreData: Core | null = null;
+        let firstRender = false;
+        const tryRender = () => {
+          if (firstRender || !baseData || !coreData) return;
+          firstRender = true;
+          setDetails({
+            ...baseData,
+            ...coreData,
+            itinerary: [],
+            groupTrips: [],
+          });
           track("trip_plan_loaded", {
             destination: input.name,
             country: input.country,
             loadMs: Date.now() - startedAt,
           });
+        };
+
+        while (!cancelled) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() ?? "";
+          for (const ev of events) {
+            if (!ev.trim()) continue;
+            let eventName = "";
+            let dataStr = "";
+            for (const line of ev.split("\n")) {
+              if (line.startsWith("event:")) eventName = line.slice(6).trim();
+              else if (line.startsWith("data:")) dataStr = line.slice(5).trim();
+            }
+            if (!dataStr) continue;
+            let payload: unknown;
+            try {
+              payload = JSON.parse(dataStr);
+            } catch {
+              continue;
+            }
+            if (eventName === "base") {
+              baseData = payload as Base;
+              tryRender();
+            } else if (eventName === "core") {
+              coreData = payload as Core;
+              tryRender();
+            } else if (eventName === "itinerary") {
+              const { itinerary } = payload as { itinerary: TripDetails["itinerary"] };
+              setDetails((prev) => (prev ? { ...prev, itinerary } : prev));
+              setLoadingItinerary(false);
+            } else if (eventName === "groupTrips") {
+              const { groupTrips } = payload as {
+                groupTrips: TripDetails["groupTrips"];
+              };
+              setDetails((prev) => (prev ? { ...prev, groupTrips } : prev));
+              setLoadingGroupTrips(false);
+            } else if (eventName === "error") {
+              const { message } = payload as { message: string };
+              if (!firstRender) setError(message);
+            }
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -561,12 +652,22 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           <SectionHeader
             icon={<Calendar className="h-5 w-5" />}
             title={t("trip.yourItinerary", { name: input.name })}
-            subtitle={t("trip.daysTailored", { n: details.itinerary.length })}
-            badge={`${details.itinerary.length} days`}
+            subtitle={
+              loadingItinerary
+                ? "Generating day-by-day plan…"
+                : t("trip.daysTailored", { n: details.itinerary.length })
+            }
+            badge={loadingItinerary ? "loading…" : `${details.itinerary.length} days`}
             open={openSections.has("itinerary")}
             onToggle={() => toggleSection("itinerary")}
           />
-          {openSections.has("itinerary") && (
+          {openSections.has("itinerary") && loadingItinerary && (
+            <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin text-[#00aa6c]" />
+              Generating your day-by-day plan…
+            </div>
+          )}
+          {openSections.has("itinerary") && !loadingItinerary && (
           <>
 
           {/* Day tabs */}

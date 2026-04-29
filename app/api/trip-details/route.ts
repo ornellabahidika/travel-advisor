@@ -275,127 +275,155 @@ export async function POST(req: Request): Promise<Response> {
 
   const anthropic = new Anthropic();
 
-  const corePromise = anthropic.messages.parse({
-    model: "claude-haiku-4-5",
-    max_tokens: 8000,
-    output_config: { format: zodOutputFormat(CoreSchema) },
-    system: [
-      { type: "text", text: CORE_PROMPT, cache_control: { type: "ephemeral" } },
-    ],
-    messages: [{ role: "user", content: userContent }],
-  });
-
-  const itineraryPromise = anthropic.messages.parse({
-    model: "claude-haiku-4-5",
-    max_tokens: 8000,
-    output_config: { format: zodOutputFormat(ItineraryOutputSchema) },
-    system: [
-      { type: "text", text: ITINERARY_PROMPT, cache_control: { type: "ephemeral" } },
-    ],
-    messages: [{ role: "user", content: userContent }],
-  });
-
-  const groupTripsPromise = anthropic.messages.parse({
-    model: "claude-haiku-4-5",
-    max_tokens: 3000,
-    output_config: { format: zodOutputFormat(GroupTripsOutputSchema) },
-    system: [
-      { type: "text", text: GROUP_TRIPS_PROMPT, cache_control: { type: "ephemeral" } },
-    ],
-    messages: [{ role: "user", content: userContent }],
-  });
-
-  let core, itinerary, groupTrips;
-  try {
-    const [coreRes, itineraryRes, groupTripsRes] = await Promise.all([
-      corePromise,
-      itineraryPromise,
-      groupTripsPromise,
-    ]);
-    core = coreRes.parsed_output;
-    itinerary = itineraryRes.parsed_output;
-    groupTrips = groupTripsRes.parsed_output;
-
-    if (!core || !itinerary || !groupTrips) {
-      return Response.json(
-        { ok: false, error: "Model returned no output." } satisfies TripDetailsResponse,
-        { status: 502 },
-      );
-    }
-  } catch (err) {
-    if (err instanceof Anthropic.APIError) {
-      return Response.json(
-        {
-          ok: false,
-          error: `Claude API (${err.status}): ${err.message}`,
-        } satisfies TripDetailsResponse,
-        { status: 502 },
-      );
-    }
-    return Response.json(
-      {
-        ok: false,
-        error: err instanceof Error ? err.message : "Planning failed",
-      } satisfies TripDetailsResponse,
-      { status: 500 },
-    );
-  }
-
   const genericFlightUrl = googleFlightsUrl(
     input.origin,
     destFull,
     input.startDate,
     input.endDate,
   );
-
   const sourceUrl = (idx: number | null): string | null => {
     if (idx === null || idx < 0 || idx >= sources.length) return null;
     return sources[idx].url;
   };
 
-  const details: TripDetails = {
-    heroImage:
-      core.heroImageIndex !== null && core.heroImageIndex < images.length
-        ? images[core.heroImageIndex]?.url ?? null
-        : images[0]?.url ?? null,
-    overview: core.overview,
-    insiderTips: core.insiderTips,
-    flights: [...core.flights]
-      .sort((a, b) => a.approxPrice - b.approxPrice)
-      .map((f) => ({
-        airline: f.airline,
-        approxPrice: f.approxPrice,
-        currency: f.currency,
-        durationHours: f.durationHours,
-        stops: f.stops,
-        notes: f.notes,
-        bookingUrl: sourceUrl(f.sourceIndex) ?? genericFlightUrl,
-      })),
-    hotels: core.hotels.map((h) => ({
-      name: h.name,
-      area: h.area,
-      approxPricePerNight: h.approxPricePerNight,
-      currency: h.currency,
-      ratingOutOf5: h.ratingOutOf5,
-      highlights: h.highlights,
-      bookingUrl:
-        sourceUrl(h.sourceIndex) ??
-        hotelSearchUrl(h.name, destFull, input.startDate, input.endDate),
-      imageUrl:
-        h.imageIndex !== null && h.imageIndex >= 0 && h.imageIndex < images.length
-          ? images[h.imageIndex].url
-          : null,
-    })),
-    itinerary: itinerary.itinerary,
-    totalEstimate: core.totalEstimate,
-    groupTrips: groupTrips.groupTrips,
-    reviews: mockReviews(input),
-    events: mockEvents(input),
-    budgetBreakdown: mockBudgetBreakdown(input),
-    transportation: mockTransportation(input),
-    thingsToDo: mockThingsToDo(input),
-    restaurants: mockRestaurants(input),
-  };
+  // Stream three independent Claude calls. As each one returns, the client
+  // gets that section right away — so the page renders the moment "core"
+  // (overview/hotels/flights/tips) lands instead of waiting for the
+  // slowest call (typically itinerary).
+  const stream = new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      const send = (event: string, data: unknown) => {
+        controller.enqueue(
+          encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+        );
+      };
 
-  return Response.json({ ok: true, details } satisfies TripDetailsResponse);
+      send("ping", { stage: "synthesizing" });
+
+      // Mock-derived sections don't depend on Claude — ship them
+      // immediately so the page can render the moment core arrives.
+      send("base", {
+        reviews: mockReviews(input),
+        events: mockEvents(input),
+        budgetBreakdown: mockBudgetBreakdown(input),
+        transportation: mockTransportation(input),
+        thingsToDo: mockThingsToDo(input),
+        restaurants: mockRestaurants(input),
+      });
+
+      const corePromise = anthropic.messages
+        .parse({
+          model: "claude-haiku-4-5",
+          max_tokens: 4096,
+          output_config: { format: zodOutputFormat(CoreSchema) },
+          system: [
+            { type: "text", text: CORE_PROMPT, cache_control: { type: "ephemeral" } },
+          ],
+          messages: [{ role: "user", content: userContent }],
+        })
+        .then((res) => {
+          const core = res.parsed_output;
+          if (!core) throw new Error("Empty core response");
+          send("core", {
+            heroImage:
+              core.heroImageIndex !== null && core.heroImageIndex < images.length
+                ? images[core.heroImageIndex]?.url ?? null
+                : images[0]?.url ?? null,
+            overview: core.overview,
+            insiderTips: core.insiderTips,
+            totalEstimate: core.totalEstimate,
+            flights: [...core.flights]
+              .sort((a, b) => a.approxPrice - b.approxPrice)
+              .map((f) => ({
+                airline: f.airline,
+                approxPrice: f.approxPrice,
+                currency: f.currency,
+                durationHours: f.durationHours,
+                stops: f.stops,
+                notes: f.notes,
+                bookingUrl: sourceUrl(f.sourceIndex) ?? genericFlightUrl,
+              })),
+            hotels: core.hotels.map((h) => ({
+              name: h.name,
+              area: h.area,
+              approxPricePerNight: h.approxPricePerNight,
+              currency: h.currency,
+              ratingOutOf5: h.ratingOutOf5,
+              highlights: h.highlights,
+              bookingUrl:
+                sourceUrl(h.sourceIndex) ??
+                hotelSearchUrl(h.name, destFull, input.startDate, input.endDate),
+              imageUrl:
+                h.imageIndex !== null &&
+                h.imageIndex >= 0 &&
+                h.imageIndex < images.length
+                  ? images[h.imageIndex].url
+                  : null,
+            })),
+          });
+        });
+
+      const itineraryPromise = anthropic.messages
+        .parse({
+          model: "claude-haiku-4-5",
+          max_tokens: 4096,
+          output_config: { format: zodOutputFormat(ItineraryOutputSchema) },
+          system: [
+            { type: "text", text: ITINERARY_PROMPT, cache_control: { type: "ephemeral" } },
+          ],
+          messages: [{ role: "user", content: userContent }],
+        })
+        .then((res) => {
+          const itinerary = res.parsed_output;
+          if (!itinerary) throw new Error("Empty itinerary response");
+          send("itinerary", { itinerary: itinerary.itinerary });
+        });
+
+      const groupTripsPromise = anthropic.messages
+        .parse({
+          model: "claude-haiku-4-5",
+          max_tokens: 1500,
+          output_config: { format: zodOutputFormat(GroupTripsOutputSchema) },
+          system: [
+            { type: "text", text: GROUP_TRIPS_PROMPT, cache_control: { type: "ephemeral" } },
+          ],
+          messages: [{ role: "user", content: userContent }],
+        })
+        .then((res) => {
+          const gt = res.parsed_output;
+          if (!gt) throw new Error("Empty group trips response");
+          send("groupTrips", { groupTrips: gt.groupTrips });
+        });
+
+      const settled = await Promise.allSettled([
+        corePromise,
+        itineraryPromise,
+        groupTripsPromise,
+      ]);
+
+      // Surface failures, but only fail the whole stream if core didn't land —
+      // itinerary/groupTrips degrade gracefully (sections show "unavailable").
+      const coreResult = settled[0];
+      if (coreResult.status === "rejected") {
+        const message =
+          coreResult.reason instanceof Error
+            ? coreResult.reason.message
+            : "Planning failed";
+        send("error", { message });
+      }
+      send("done", {});
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "content-type": "text/event-stream",
+      "cache-control": "no-cache, no-transform",
+      connection: "keep-alive",
+      "x-accel-buffering": "no",
+      "content-encoding": "identity",
+    },
+  });
 }
