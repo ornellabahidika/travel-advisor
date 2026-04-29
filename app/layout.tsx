@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VoyPilot — Where should you go next?",
+  title: "VoyPilot — Let's go?",
   description:
     "VoyPilot: AI-powered travel suggestions, end-to-end trip planning, restaurants, transport, events, group trips, and more.",
 };
