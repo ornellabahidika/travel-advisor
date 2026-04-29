@@ -21,7 +21,8 @@ import { track } from "@/lib/analytics";
 import { VibeComboBox } from "./VibeComboBox";
 import { Autocomplete } from "./Autocomplete";
 import { ContinueSection } from "./ContinueSection";
-import { POPULAR_LOCATIONS, CITIES_ONLY, COUNTRIES } from "@/lib/locations";
+import { COUNTRIES } from "@/lib/locations";
+import { searchPlaces } from "@/lib/photon";
 import type { TKey } from "@/lib/translations";
 
 type Mode = "discover" | "known";
@@ -231,7 +232,7 @@ export function Advisor() {
                     required
                     value={knownName}
                     onChange={setKnownName}
-                    suggestions={CITIES_ONLY}
+                    loadOptions={searchPlaces}
                     placeholder={t("form.destCityPlaceholder")}
                     className="w-full border-0 bg-transparent text-base font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:outline-none"
                   />
@@ -268,7 +269,7 @@ export function Advisor() {
                   required
                   value={form.origin}
                   onChange={(v) => setForm({ ...form, origin: v })}
-                  suggestions={POPULAR_LOCATIONS}
+                  loadOptions={searchPlaces}
                   placeholder={t("form.travelingFromPlaceholder")}
                   className="w-full border-0 bg-transparent text-base font-semibold text-slate-900 placeholder:font-normal placeholder:text-slate-400 focus:outline-none"
                 />
