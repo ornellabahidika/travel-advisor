@@ -126,7 +126,7 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
 
   useEffect(() => {
     if (!details) return;
-    const ids = ["overview", "flights", "hotels", "itinerary", "events", "travelers", "transport", "reviews", "tips"];
+    const ids = ["overview", "flights", "hotels", "itinerary", "travelers", "events", "transport", "reviews", "tips"];
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -316,10 +316,10 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
   // Order in which sections appear on the page; conditional sections drop
   // out so "Continue →" walks across only the ones that actually render.
   const presentSections: string[] = ["overview", "flights", "hotels", "itinerary"];
-  if (details.events.length > 0) presentSections.push("events");
   // Travelers section always renders so users can host even when no group
   // trips are suggested; include it in the nav too.
   presentSections.push("travelers");
+  if (details.events.length > 0) presentSections.push("events");
   if (details.transportation.length > 0) presentSections.push("transport");
   presentSections.push("reviews");
   if (details.insiderTips.length > 0) presentSections.push("tips");
@@ -418,6 +418,11 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             label={t("trip.itinerary")}
             onClick={() => openSectionAndScroll("itinerary")}
           />
+          <SectionTab
+            active={activeSection === "travelers"}
+            label={t("trip.travelers")}
+            onClick={() => openSectionAndScroll("travelers")}
+          />
           {details.events.length > 0 && (
             <SectionTab
               active={activeSection === "events"}
@@ -425,11 +430,6 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               onClick={() => openSectionAndScroll("events")}
             />
           )}
-          <SectionTab
-            active={activeSection === "travelers"}
-            label={t("trip.travelers")}
-            onClick={() => openSectionAndScroll("travelers")}
-          />
           {details.transportation.length > 0 && (
             <SectionTab
               active={activeSection === "transport"}
@@ -796,37 +796,8 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           )}
         </section>
 
-        {/* Events during your trip */}
-        {details.events.length > 0 && (
-          <section id="events" className="scroll-mt-20">
-            <SectionHeader
-              icon={<Ticket className="h-5 w-5" />}
-              title={t("trip.eventsTitle")}
-              subtitle={t("trip.eventsSub", { n: details.events.length })}
-              badge={`${details.events.length} events`}
-              open={openSections.has("events")}
-              onToggle={() => toggleSection("events")}
-            />
-            {openSections.has("events") && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                {details.events.map((e) => (
-                  <EventCard key={e.id} event={e} />
-                ))}
-              </div>
-            )}
-            {openSections.has("events") && nextOf("events") && (
-              <NextSectionButton
-                label={sectionLabel(nextOf("events")!)}
-                onClick={() => openSectionAndScroll(nextOf("events")!)}
-              />
-            )}
-          </section>
-        )}
-
-        {/* Travelers heading there — always visible. While the LLM is
-            still generating group trips we show a loading state; if it
-            ultimately returns empty, the section still renders with a
-            "be the first" CTA so the user has a way to host. */}
+        {/* Travelers heading there — always visible so users can host
+            even when no group trips are present. */}
         <section id="travelers" className="scroll-mt-20">
           <SectionHeader
             icon={<Users className="h-5 w-5" />}
@@ -884,6 +855,33 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             />
           )}
         </section>
+
+        {/* Events during your trip */}
+        {details.events.length > 0 && (
+          <section id="events" className="scroll-mt-20">
+            <SectionHeader
+              icon={<Ticket className="h-5 w-5" />}
+              title={t("trip.eventsTitle")}
+              subtitle={t("trip.eventsSub", { n: details.events.length })}
+              badge={`${details.events.length} events`}
+              open={openSections.has("events")}
+              onToggle={() => toggleSection("events")}
+            />
+            {openSections.has("events") && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {details.events.map((e) => (
+                  <EventCard key={e.id} event={e} />
+                ))}
+              </div>
+            )}
+            {openSections.has("events") && nextOf("events") && (
+              <NextSectionButton
+                label={sectionLabel(nextOf("events")!)}
+                onClick={() => openSectionAndScroll(nextOf("events")!)}
+              />
+            )}
+          </section>
+        )}
 
         {/* Transportation */}
         {details.transportation.length > 0 && (
