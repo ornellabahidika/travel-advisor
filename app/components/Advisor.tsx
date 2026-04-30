@@ -238,7 +238,7 @@ export function Advisor() {
     <div>
       {/* Hero */}
       <section className="mx-auto max-w-7xl px-4 pb-5 pt-6 sm:px-6 sm:pt-8 text-center">
-        <h1 className="mx-auto max-w-4xl text-4xl font-black leading-[1.1] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+        <h1 className="mx-auto max-w-3xl text-2xl font-black leading-[1.15] tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
           {mode === "known"
             ? t("hero.planTrip")
             : "Tell us your budget and vibe, we will handle the whole journey"}
