@@ -15,7 +15,7 @@ import {
   Compass,
   Plane,
   Hotel,
-  Utensils,
+  Bus,
 } from "lucide-react";
 import type { Destination, SuggestResponse, TravelInput } from "@/lib/types";
 import { DestinationCard } from "./DestinationCard";
@@ -260,11 +260,11 @@ export function Advisor() {
           </span>
           <span aria-hidden>·</span>
           <span className="flex items-center gap-1">
-            <Utensils className="h-3.5 w-3.5" /> Restaurants
+            <Bus className="h-3.5 w-3.5" /> Transport
           </span>
           <span aria-hidden>·</span>
           <span className="flex items-center gap-1">
-            <Users className="h-3.5 w-3.5" /> Group trips
+            <Users className="h-3.5 w-3.5" /> Group trip match
           </span>
         </div>
       </section>
