@@ -14,7 +14,7 @@ export function FavoritesButton() {
     <Link
       href="/favorites"
       onClick={() => track("favorites_opened", { count })}
-      className="relative inline-flex items-center gap-1.5 rounded-full border border-slate-300 px-4 py-1.5 text-sm font-bold text-slate-900 hover:bg-slate-100"
+      className="relative inline-flex items-center gap-1 rounded-full border border-slate-300 px-2.5 py-1 text-xs font-bold text-slate-900 hover:bg-slate-100 sm:gap-1.5 sm:px-4 sm:py-1.5 sm:text-sm"
     >
       <Heart className={`h-4 w-4 ${count > 0 ? "fill-rose-500 text-rose-500" : ""}`} />
       {t("header.favorites")}
