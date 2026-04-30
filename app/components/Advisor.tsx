@@ -16,6 +16,8 @@ import {
   Plane,
   Hotel,
   Bus,
+  ClipboardCheck,
+  Luggage,
 } from "lucide-react";
 import type { Destination, SuggestResponse, TravelInput } from "@/lib/types";
 import { DestinationCard } from "./DestinationCard";
@@ -239,33 +241,108 @@ export function Advisor() {
 
   return (
     <div>
-      {/* Hero */}
-      <section className="mx-auto max-w-7xl px-4 pb-5 pt-6 sm:px-6 sm:pt-8 text-center">
-        <h1 className="mx-auto max-w-3xl text-2xl font-black leading-[1.15] tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-          {mode === "known"
-            ? t("hero.planTrip")
-            : "Tell us your budget and vibe, we will handle the whole journey"}
-        </h1>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-          <span className="flex items-center gap-1">
-            <Plane className="h-3.5 w-3.5" /> Flights
-          </span>
-          <span aria-hidden>·</span>
-          <span className="flex items-center gap-1">
-            <Hotel className="h-3.5 w-3.5" /> Hotels
-          </span>
-          <span aria-hidden>·</span>
-          <span className="flex items-center gap-1">
-            <Calendar className="h-3.5 w-3.5" /> Itinerary
-          </span>
-          <span aria-hidden>·</span>
-          <span className="flex items-center gap-1">
-            <Bus className="h-3.5 w-3.5" /> Transport
-          </span>
-          <span aria-hidden>·</span>
-          <span className="flex items-center gap-1">
-            <Users className="h-3.5 w-3.5" /> Group trip match
-          </span>
+      {/* Hero — soft gradient + four floating travel-themed decorations
+          (plane, checklist, luggage, people) placed in each corner. No
+          external images: all built from lucide-react icons so the page
+          loads instantly and scales perfectly on any screen. */}
+      <section className="relative mx-auto max-w-7xl overflow-hidden">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-50 via-white to-amber-50"
+        />
+        {/* Decorative dotted travel-route arcs */}
+        <svg
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          viewBox="0 0 1200 220"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M 80 140 Q 300 60 500 130 T 900 110 T 1140 80"
+            stroke="#67e8f9"
+            strokeWidth="2"
+            strokeDasharray="4 6"
+            fill="none"
+            opacity="0.5"
+          />
+          <path
+            d="M 60 60 Q 250 130 460 90 T 880 140 T 1140 130"
+            stroke="#fcd34d"
+            strokeWidth="2"
+            strokeDasharray="4 6"
+            fill="none"
+            opacity="0.4"
+          />
+        </svg>
+
+        {/* Top-left: checklist */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-2 top-3 hidden rotate-[-8deg] sm:left-6 sm:top-5 sm:block"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100/80 text-emerald-600 shadow-sm sm:h-14 sm:w-14">
+            <ClipboardCheck className="h-6 w-6 sm:h-7 sm:w-7" />
+          </div>
+        </div>
+
+        {/* Top-right: plane (slight tilt, suggesting flight) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-3 top-2 rotate-[20deg] sm:right-8 sm:top-4"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100/80 text-amber-600 shadow-sm sm:h-14 sm:w-14">
+            <Plane className="h-6 w-6 sm:h-7 sm:w-7" />
+          </div>
+        </div>
+
+        {/* Bottom-left: luggage / packed bag */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-2 left-3 rotate-[6deg] sm:bottom-3 sm:left-8"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100/80 text-indigo-600 shadow-sm sm:h-14 sm:w-14">
+            <Luggage className="h-6 w-6 sm:h-7 sm:w-7" />
+          </div>
+        </div>
+
+        {/* Bottom-right: connect with people */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-2 right-3 rotate-[-6deg] sm:bottom-3 sm:right-8"
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100/80 text-rose-600 shadow-sm sm:h-14 sm:w-14">
+            <Users className="h-6 w-6 sm:h-7 sm:w-7" />
+          </div>
+        </div>
+
+        {/* Hero text — sits above the decorations */}
+        <div className="relative z-10 px-4 pb-7 pt-10 text-center sm:px-6 sm:pb-10 sm:pt-14">
+          <h1 className="mx-auto max-w-3xl text-2xl font-black leading-[1.15] tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
+            {mode === "known"
+              ? t("hero.planTrip")
+              : "Tell us your budget and vibe, we will handle the whole journey"}
+          </h1>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            <span className="flex items-center gap-1">
+              <Plane className="h-3.5 w-3.5" /> Flights
+            </span>
+            <span aria-hidden>·</span>
+            <span className="flex items-center gap-1">
+              <Hotel className="h-3.5 w-3.5" /> Hotels
+            </span>
+            <span aria-hidden>·</span>
+            <span className="flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" /> Itinerary
+            </span>
+            <span aria-hidden>·</span>
+            <span className="flex items-center gap-1">
+              <Bus className="h-3.5 w-3.5" /> Transport
+            </span>
+            <span aria-hidden>·</span>
+            <span className="flex items-center gap-1">
+              <Users className="h-3.5 w-3.5" /> Group trip match
+            </span>
+          </div>
         </div>
       </section>
 
