@@ -248,7 +248,7 @@ export function Advisor() {
       <section className="relative mx-auto max-w-7xl overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-cyan-50 via-white to-amber-50"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-sky-100 via-sky-50 to-blue-50"
         />
         {/* Decorative dotted travel-route arcs */}
         <svg
