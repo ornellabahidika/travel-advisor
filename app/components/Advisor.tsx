@@ -13,6 +13,9 @@ import {
   Plus,
   ArrowRight,
   Compass,
+  Plane,
+  Hotel,
+  Utensils,
 } from "lucide-react";
 import type { Destination, SuggestResponse, TravelInput } from "@/lib/types";
 import { DestinationCard } from "./DestinationCard";
@@ -243,9 +246,27 @@ export function Advisor() {
             ? t("hero.planTrip")
             : "Tell us your budget and vibe, we will handle the whole journey"}
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-lg text-slate-600">
-          {mode === "known" ? t("hero.subKnown") : t("hero.subDiscover")}
-        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          <span className="flex items-center gap-1">
+            <Plane className="h-3.5 w-3.5" /> Flights
+          </span>
+          <span aria-hidden>·</span>
+          <span className="flex items-center gap-1">
+            <Hotel className="h-3.5 w-3.5" /> Hotels
+          </span>
+          <span aria-hidden>·</span>
+          <span className="flex items-center gap-1">
+            <Calendar className="h-3.5 w-3.5" /> Itinerary
+          </span>
+          <span aria-hidden>·</span>
+          <span className="flex items-center gap-1">
+            <Utensils className="h-3.5 w-3.5" /> Restaurants
+          </span>
+          <span aria-hidden>·</span>
+          <span className="flex items-center gap-1">
+            <Users className="h-3.5 w-3.5" /> Group trips
+          </span>
+        </div>
       </section>
 
       {/* Mode tabs */}
