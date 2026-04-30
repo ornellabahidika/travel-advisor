@@ -10,12 +10,12 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
 export function Header() {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2 sm:px-6">
         <Link
           href="/"
-          className="flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900"
+          className="flex items-center gap-1.5 text-base font-black tracking-tight text-slate-900 sm:text-lg"
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-yellow-400 text-xl shadow-sm ring-2 ring-amber-200">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-yellow-400 text-sm shadow-sm ring-1 ring-amber-200 sm:h-8 sm:w-8 sm:text-base">
             🧳
           </span>
           VoyPilot
