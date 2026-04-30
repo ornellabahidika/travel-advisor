@@ -324,8 +324,9 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
   // out so "Continue →" walks across only the ones that actually render.
   const presentSections: string[] = ["overview", "flights", "hotels", "itinerary"];
   if (details.events.length > 0) presentSections.push("events");
-  if (details.groupTrips.length > 0 || hosted.length > 0)
-    presentSections.push("travelers");
+  // Travelers section always renders so users can host even when no group
+  // trips are suggested; include it in the nav too.
+  presentSections.push("travelers");
   if (details.transportation.length > 0) presentSections.push("transport");
   presentSections.push("reviews");
   if (details.insiderTips.length > 0) presentSections.push("tips");
@@ -431,13 +432,11 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               onClick={() => openSectionAndScroll("events")}
             />
           )}
-          {details.groupTrips.length > 0 && (
-            <SectionTab
-              active={activeSection === "travelers"}
-              label={t("trip.travelers")}
-              onClick={() => openSectionAndScroll("travelers")}
-            />
-          )}
+          <SectionTab
+            active={activeSection === "travelers"}
+            label={t("trip.travelers")}
+            onClick={() => openSectionAndScroll("travelers")}
+          />
           {details.transportation.length > 0 && (
             <SectionTab
               active={activeSection === "transport"}
@@ -831,30 +830,48 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           </section>
         )}
 
-        {/* Travelers heading there */}
-        {(details.groupTrips.length > 0 || hosted.length > 0) && (
-          <section id="travelers" className="scroll-mt-20">
-            <SectionHeader
-              icon={<Users className="h-5 w-5" />}
-              title={t("trip.travelersTitle")}
-              subtitle={t("trip.travelersSub")}
-              badge={`${details.groupTrips.length + hosted.length} groups`}
-              open={openSections.has("travelers")}
-              onToggle={() => toggleSection("travelers")}
-              actionRight={
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowHostModal(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[#34e0a1] px-4 py-2 text-sm font-black text-slate-900 transition hover:bg-[#2ccb91]"
-                >
-                  <Plus className="h-4 w-4" />
-                  {t("host.button")}
-                </button>
-              }
-            />
-            {openSections.has("travelers") && (
+        {/* Travelers heading there — always visible. While the LLM is
+            still generating group trips we show a loading state; if it
+            ultimately returns empty, the section still renders with a
+            "be the first" CTA so the user has a way to host. */}
+        <section id="travelers" className="scroll-mt-20">
+          <SectionHeader
+            icon={<Users className="h-5 w-5" />}
+            title={t("trip.travelersTitle")}
+            subtitle={
+              loadingGroupTrips
+                ? "Finding travelers heading there…"
+                : t("trip.travelersSub")
+            }
+            badge={
+              loadingGroupTrips
+                ? "loading…"
+                : `${details.groupTrips.length + hosted.length} groups`
+            }
+            open={openSections.has("travelers")}
+            onToggle={() => toggleSection("travelers")}
+            actionRight={
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowHostModal(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#34e0a1] px-4 py-2 text-sm font-black text-slate-900 transition hover:bg-[#2ccb91]"
+              >
+                <Plus className="h-4 w-4" />
+                {t("host.button")}
+              </button>
+            }
+          />
+          {openSections.has("travelers") && loadingGroupTrips && (
+            <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin text-[#00aa6c]" />
+              Finding travelers heading there…
+            </div>
+          )}
+          {openSections.has("travelers") &&
+            !loadingGroupTrips &&
+            (details.groupTrips.length > 0 || hosted.length > 0) && (
               <>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {hosted.map((g) => (
@@ -883,14 +900,37 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
                 </p>
               </>
             )}
-            {openSections.has("travelers") && nextOf("travelers") && (
-              <NextSectionButton
-                label={sectionLabel(nextOf("travelers")!)}
-                onClick={() => openSectionAndScroll(nextOf("travelers")!)}
-              />
+          {openSections.has("travelers") &&
+            !loadingGroupTrips &&
+            details.groupTrips.length === 0 &&
+            hosted.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                  <Users className="h-6 w-6" />
+                </div>
+                <h3 className="mb-1 text-base font-bold text-slate-900">
+                  No travelers heading there yet
+                </h3>
+                <p className="mb-4 text-sm text-slate-500">
+                  Be the first — host your own group trip and let others request to join.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowHostModal(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[#34e0a1] px-5 py-2.5 text-sm font-black text-slate-900 transition hover:bg-[#2ccb91]"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t("host.button")}
+                </button>
+              </div>
             )}
-          </section>
-        )}
+          {openSections.has("travelers") && nextOf("travelers") && (
+            <NextSectionButton
+              label={sectionLabel(nextOf("travelers")!)}
+              onClick={() => openSectionAndScroll(nextOf("travelers")!)}
+            />
+          )}
+        </section>
 
         {/* Transportation */}
         {details.transportation.length > 0 && (
