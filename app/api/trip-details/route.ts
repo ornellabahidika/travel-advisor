@@ -7,6 +7,7 @@ import {
   mockBudgetBreakdown,
   mockDelay,
   mockEvents,
+  mockGroupTrips,
   mockRestaurants,
   mockReviews,
   mockThingsToDo,
@@ -333,6 +334,11 @@ export async function POST(req: Request): Promise<Response> {
 
       // Mock-derived sections don't depend on Claude — ship them
       // immediately so the page can render the moment core arrives.
+      // Group trips ship as mocks too: the section is explicitly a
+      // demo of what real matchmaking would look like, so showing
+      // three plausible deterministic mockups (a) saves a Claude call,
+      // (b) keeps the section populated reliably, (c) makes the
+      // feature's vision visible from the first paint.
       send("base", {
         reviews: mockReviews(input),
         events: mockEvents(input),
@@ -340,6 +346,7 @@ export async function POST(req: Request): Promise<Response> {
         transportation: mockTransportation(input),
         thingsToDo: mockThingsToDo(input),
         restaurants: mockRestaurants(input),
+        groupTrips: mockGroupTrips(input),
       });
 
       const corePromise = anthropic.messages
@@ -420,27 +427,7 @@ export async function POST(req: Request): Promise<Response> {
           send("itinerary", { itinerary: itinerary.itinerary });
         });
 
-      const groupTripsPromise = anthropic.messages
-        .parse({
-          model: "claude-haiku-4-5",
-          max_tokens: 1500,
-          output_config: { format: zodOutputFormat(GroupTripsOutputSchema) },
-          system: [
-            { type: "text", text: GROUP_TRIPS_PROMPT, cache_control: { type: "ephemeral" } },
-          ],
-          messages: [{ role: "user", content: userContent }],
-        })
-        .then((res) => {
-          const gt = res.parsed_output;
-          if (!gt) throw new Error("Empty group trips response");
-          send("groupTrips", { groupTrips: gt.groupTrips });
-        });
-
-      const settled = await Promise.allSettled([
-        corePromise,
-        itineraryPromise,
-        groupTripsPromise,
-      ]);
+      const settled = await Promise.allSettled([corePromise, itineraryPromise]);
 
       // Surface failures, but only fail the whole stream if core didn't land —
       // itinerary/groupTrips degrade gracefully (sections show "unavailable").

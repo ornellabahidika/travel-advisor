@@ -98,7 +98,6 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
     () => new Set(["overview"]),
   );
   const [loadingItinerary, setLoadingItinerary] = useState(true);
-  const [loadingGroupTrips, setLoadingGroupTrips] = useState(true);
   const toggleSection = (id: string) =>
     setOpenSections((prev) => {
       const next = new Set(prev);
@@ -202,6 +201,7 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           | "transportation"
           | "thingsToDo"
           | "restaurants"
+          | "groupTrips"
         >;
         type Core = Pick<
           TripDetails,
@@ -222,7 +222,6 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             ...baseData,
             ...coreData,
             itinerary: [],
-            groupTrips: [],
           });
           track("trip_plan_loaded", {
             destination: input.name,
@@ -262,12 +261,6 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               const { itinerary } = payload as { itinerary: TripDetails["itinerary"] };
               setDetails((prev) => (prev ? { ...prev, itinerary } : prev));
               setLoadingItinerary(false);
-            } else if (eventName === "groupTrips") {
-              const { groupTrips } = payload as {
-                groupTrips: TripDetails["groupTrips"];
-              };
-              setDetails((prev) => (prev ? { ...prev, groupTrips } : prev));
-              setLoadingGroupTrips(false);
             } else if (eventName === "error") {
               const { message } = payload as { message: string };
               if (!firstRender) setError(message);
@@ -838,16 +831,8 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
           <SectionHeader
             icon={<Users className="h-5 w-5" />}
             title={t("trip.travelersTitle")}
-            subtitle={
-              loadingGroupTrips
-                ? "Finding travelers heading there…"
-                : t("trip.travelersSub")
-            }
-            badge={
-              loadingGroupTrips
-                ? "loading…"
-                : `${details.groupTrips.length + hosted.length} groups`
-            }
+            subtitle={t("trip.travelersSub")}
+            badge={`${details.groupTrips.length + hosted.length} groups`}
             open={openSections.has("travelers")}
             onToggle={() => toggleSection("travelers")}
             actionRight={
@@ -863,67 +848,35 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               </button>
             }
           />
-          {openSections.has("travelers") && loadingGroupTrips && (
-            <div className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-sm text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin text-[#00aa6c]" />
-              Finding travelers heading there…
-            </div>
-          )}
-          {openSections.has("travelers") &&
-            !loadingGroupTrips &&
-            (details.groupTrips.length > 0 || hosted.length > 0) && (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {hosted.map((g) => (
-                    <GroupTripCard
-                      key={g.id}
-                      group={g}
-                      onJoin={() => undefined}
-                      hostedByMe
-                      onDelete={() => removeHosted(g.id)}
-                      pendingRequests={g.requests.filter((r) => r.status === "pending").length}
-                      onViewRequests={() =>
-                        setRequestsTarget({
-                          tripId: g.id,
-                          hostName: g.hostName,
-                          requests: g.requests,
-                        })
-                      }
-                    />
-                  ))}
-                  {details.groupTrips.map((g) => (
-                    <GroupTripCard key={g.id} group={g} onJoin={() => setJoinTarget(g)} />
-                  ))}
-                </div>
-                <p className="mt-4 text-xs text-slate-500">
-                  Group trips are demo listings. Real matchmaking + messaging coming soon.
-                </p>
-              </>
-            )}
-          {openSections.has("travelers") &&
-            !loadingGroupTrips &&
-            details.groupTrips.length === 0 &&
-            hosted.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                  <Users className="h-6 w-6" />
-                </div>
-                <h3 className="mb-1 text-base font-bold text-slate-900">
-                  No travelers heading there yet
-                </h3>
-                <p className="mb-4 text-sm text-slate-500">
-                  Be the first — host your own group trip and let others request to join.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowHostModal(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[#34e0a1] px-5 py-2.5 text-sm font-black text-slate-900 transition hover:bg-[#2ccb91]"
-                >
-                  <Plus className="h-4 w-4" />
-                  {t("host.button")}
-                </button>
+          {openSections.has("travelers") && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {hosted.map((g) => (
+                  <GroupTripCard
+                    key={g.id}
+                    group={g}
+                    onJoin={() => undefined}
+                    hostedByMe
+                    onDelete={() => removeHosted(g.id)}
+                    pendingRequests={g.requests.filter((r) => r.status === "pending").length}
+                    onViewRequests={() =>
+                      setRequestsTarget({
+                        tripId: g.id,
+                        hostName: g.hostName,
+                        requests: g.requests,
+                      })
+                    }
+                  />
+                ))}
+                {details.groupTrips.map((g) => (
+                  <GroupTripCard key={g.id} group={g} onJoin={() => setJoinTarget(g)} />
+                ))}
               </div>
-            )}
+              <p className="mt-4 text-xs text-slate-500">
+                Group trips are demo listings. Real matchmaking + messaging coming soon.
+              </p>
+            </>
+          )}
           {openSections.has("travelers") && nextOf("travelers") && (
             <NextSectionButton
               label={sectionLabel(nextOf("travelers")!)}

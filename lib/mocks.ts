@@ -1,6 +1,7 @@
 import type {
   BudgetBreakdown,
   Destination,
+  GroupTrip,
   LocalEvent,
   Restaurant,
   ReviewSummary,
@@ -1042,4 +1043,56 @@ export function isMockMode(): boolean {
 
 export function mockDelay(ms = 1500): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Three plausible "other travelers headed there too" group-trip mockups.
+// Always shown — the section is explicitly labelled as a demo listing of
+// what real matchmaking would look like once we wire it up.
+export function mockGroupTrips(input: TripDetailsInput): GroupTrip[] {
+  const shiftDate = (iso: string, days: number): string => {
+    const d = new Date(iso);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0, 10);
+  };
+  const interests = input.interests.length > 0 ? input.interests : ["culture", "food"];
+  const interest1 = interests[0] ?? "culture";
+  const interest2 = interests[1] ?? "food";
+  return [
+    {
+      id: "grp-1",
+      hostName: "Maya L.",
+      hostOrigin: "Berlin, Germany",
+      hostVibe: "solo female traveler, late 20s",
+      startDate: shiftDate(input.startDate, -1),
+      endDate: shiftDate(input.endDate, 1),
+      travelersCount: 1,
+      capacity: 3,
+      focus: [interest1, "photography", "slow travel"],
+      blurb: `Heading to ${input.name} for a slower week — mornings in cafés, afternoons wandering, evenings somewhere local. Looking for 1-2 chill people who don't need a packed itinerary.`,
+    },
+    {
+      id: "grp-2",
+      hostName: "Jordan K.",
+      hostOrigin: "Toronto, Canada",
+      hostVibe: "couple in their 30s",
+      startDate: shiftDate(input.startDate, 0),
+      endDate: shiftDate(input.endDate, 2),
+      travelersCount: 2,
+      capacity: 4,
+      focus: [interest2, "nightlife", "live music"],
+      blurb: `Quick trip with my partner — we love finding the spots locals actually go. Open to splitting an Airbnb with another couple or two friends who are easygoing.`,
+    },
+    {
+      id: "grp-3",
+      hostName: "Priya R.",
+      hostOrigin: "London, UK",
+      hostVibe: "friends from university",
+      startDate: shiftDate(input.startDate, 2),
+      endDate: shiftDate(input.endDate, 0),
+      travelersCount: 3,
+      capacity: 6,
+      focus: [interest1, "hiking", "off the beaten path"],
+      blurb: `Three of us going to ${input.name} — booked the place, planned a couple of hikes, the rest is open. Friendly group, no pressure to do everything together.`,
+    },
+  ];
 }
