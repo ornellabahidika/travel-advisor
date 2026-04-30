@@ -237,21 +237,13 @@ export function Advisor() {
   return (
     <div>
       {/* Hero */}
-      <section className="mx-auto max-w-7xl px-4 pb-5 pt-6 sm:px-6 sm:pt-8">
-        <h1 className="text-4xl font-black leading-[1.05] tracking-tight text-slate-900 sm:text-6xl lg:text-7xl">
-          {mode === "known" ? (
-            t("hero.planTrip")
-          ) : (
-            <>
-              Tell us your vibe.
-              <br />
-              We&apos;ll handle the
-              <br />
-              whole journey.
-            </>
-          )}
+      <section className="mx-auto max-w-7xl px-4 pb-5 pt-6 sm:px-6 sm:pt-8 text-center">
+        <h1 className="mx-auto max-w-4xl text-4xl font-black leading-[1.1] tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+          {mode === "known"
+            ? t("hero.planTrip")
+            : "Tell us your budget and vibe, we will handle the whole journey"}
         </h1>
-        <p className="mt-4 max-w-xl text-lg text-slate-600">
+        <p className="mx-auto mt-4 max-w-xl text-lg text-slate-600">
           {mode === "known" ? t("hero.subKnown") : t("hero.subDiscover")}
         </p>
       </section>
