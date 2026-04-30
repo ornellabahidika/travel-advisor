@@ -17,10 +17,17 @@ import {
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import {
   TripDetailsInputSchema,
+  type FlightOption,
+  type HotelOption,
   type TripDetails,
   type TripDetailsResponse,
 } from "@/lib/types";
 import { toAirlineCode, toCityCode } from "@/lib/iata";
+import {
+  searchFlights as tpSearchFlights,
+  searchHotels as tpSearchHotels,
+  travelpayoutsConfigured,
+} from "@/lib/travelpayouts";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -316,6 +323,31 @@ export async function POST(req: Request): Promise<Response> {
 
   const anthropic = new Anthropic();
 
+  // Kick off Travelpayouts searches in parallel with Claude. They're much
+  // faster (1-3s) than Claude (~25s), so by the time core resolves, real
+  // flight + hotel data is usually already in. If TP returns empty (city
+  // unknown to Aviasales / no token / network issue), we fall back to
+  // Claude's LLM-generated estimates.
+  const tpFlightsPromise: Promise<FlightOption[]> = travelpayoutsConfigured()
+    ? tpSearchFlights(
+        input.origin,
+        destFull,
+        input.startDate,
+        input.endDate,
+        input.currency,
+      ).catch(() => [])
+    : Promise.resolve([]);
+
+  const tpHotelsPromise: Promise<HotelOption[]> = travelpayoutsConfigured()
+    ? tpSearchHotels(
+        destFull,
+        input.startDate,
+        input.endDate,
+        input.travelers,
+        input.currency,
+      ).catch(() => [])
+    : Promise.resolve([]);
+
 
   // Stream three independent Claude calls. As each one returns, the client
   // gets that section right away — so the page renders the moment "core"
@@ -359,9 +391,71 @@ export async function POST(req: Request): Promise<Response> {
           ],
           messages: [{ role: "user", content: userContent }],
         })
-        .then((res) => {
+        .then(async (res) => {
           const core = res.parsed_output;
           if (!core) throw new Error("Empty core response");
+
+          // Await Travelpayouts results — they almost always finish before
+          // Claude's core call (1-3s vs ~25s), but cap at 2s extra after
+          // core just in case TP is slow, so we never delay user too long.
+          const withTimeout = <T,>(p: Promise<T>, ms: number, fallback: T): Promise<T> =>
+            Promise.race([
+              p,
+              new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+            ]);
+          const [tpFlights, tpHotels] = await Promise.all([
+            withTimeout(tpFlightsPromise, 2000, [] as FlightOption[]),
+            withTimeout(tpHotelsPromise, 2000, [] as HotelOption[]),
+          ]);
+
+          // Flights: prefer live Travelpayouts results; fall back to LLM.
+          const flights: FlightOption[] =
+            tpFlights.length > 0
+              ? tpFlights
+              : [...core.flights]
+                  .sort((a, b) => a.approxPrice - b.approxPrice)
+                  .map((f) => ({
+                    airline: f.airline,
+                    approxPrice: f.approxPrice,
+                    currency: f.currency,
+                    durationHours: f.durationHours,
+                    stops: f.stops,
+                    notes: f.notes,
+                    bookingUrl: flightSearchUrl(
+                      input.origin,
+                      destFull,
+                      f.airline,
+                      input.startDate,
+                      input.endDate,
+                    ),
+                  }));
+
+          // Hotels: prefer live Travelpayouts results; fall back to LLM.
+          const hotels: HotelOption[] =
+            tpHotels.length > 0
+              ? tpHotels
+              : core.hotels.map((h) => ({
+                  name: h.name,
+                  area: h.area,
+                  approxPricePerNight: h.approxPricePerNight,
+                  currency: h.currency,
+                  ratingOutOf5: h.ratingOutOf5,
+                  highlights: h.highlights,
+                  bookingUrl: hotelSearchUrl(
+                    h.name,
+                    destFull,
+                    input.startDate,
+                    input.endDate,
+                    input.travelers,
+                  ),
+                  imageUrl:
+                    h.imageIndex !== null &&
+                    h.imageIndex >= 0 &&
+                    h.imageIndex < images.length
+                      ? images[h.imageIndex].url
+                      : null,
+                }));
+
           send("core", {
             heroImage:
               core.heroImageIndex !== null && core.heroImageIndex < images.length
@@ -370,44 +464,8 @@ export async function POST(req: Request): Promise<Response> {
             overview: core.overview,
             insiderTips: core.insiderTips,
             totalEstimate: core.totalEstimate,
-            flights: [...core.flights]
-              .sort((a, b) => a.approxPrice - b.approxPrice)
-              .map((f) => ({
-                airline: f.airline,
-                approxPrice: f.approxPrice,
-                currency: f.currency,
-                durationHours: f.durationHours,
-                stops: f.stops,
-                notes: f.notes,
-                bookingUrl: flightSearchUrl(
-                  input.origin,
-                  destFull,
-                  f.airline,
-                  input.startDate,
-                  input.endDate,
-                ),
-              })),
-            hotels: core.hotels.map((h) => ({
-              name: h.name,
-              area: h.area,
-              approxPricePerNight: h.approxPricePerNight,
-              currency: h.currency,
-              ratingOutOf5: h.ratingOutOf5,
-              highlights: h.highlights,
-              bookingUrl: hotelSearchUrl(
-                h.name,
-                destFull,
-                input.startDate,
-                input.endDate,
-                input.travelers,
-              ),
-              imageUrl:
-                h.imageIndex !== null &&
-                h.imageIndex >= 0 &&
-                h.imageIndex < images.length
-                  ? images[h.imageIndex].url
-                  : null,
-            })),
+            flights,
+            hotels,
           });
         });
 

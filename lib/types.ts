@@ -59,6 +59,10 @@ export type FlightOption = {
   stops: number;
   notes: string;
   bookingUrl: string;
+  // True when the price came from a real flight pricing API (e.g.
+  // Aviasales/Travelpayouts) rather than an LLM estimate. UI uses this
+  // to drop the "Estimate" pill and change the CTA to "Book".
+  isLive?: boolean;
 };
 
 export type HotelOption = {
@@ -70,6 +74,7 @@ export type HotelOption = {
   highlights: string[];
   bookingUrl: string;
   imageUrl: string | null;
+  isLive?: boolean;
 };
 
 export type Activity = {
