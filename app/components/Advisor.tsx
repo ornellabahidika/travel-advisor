@@ -18,6 +18,7 @@ import {
   Bus,
   ClipboardCheck,
   Luggage,
+  Sparkles,
 } from "lucide-react";
 import type { Destination, SuggestResponse, TravelInput } from "@/lib/types";
 import { DestinationCard } from "./DestinationCard";
@@ -248,7 +249,7 @@ export function Advisor() {
       <section className="relative mx-auto max-w-7xl overflow-hidden">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-sky-100 via-sky-50 to-blue-50"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-sky-100 via-white to-amber-100/70"
         />
         {/* Decorative dotted travel-route arcs */}
         <svg
@@ -316,11 +317,15 @@ export function Advisor() {
         </div>
 
         {/* Hero text — sits above the decorations */}
-        <div className="relative z-10 px-4 pb-7 pt-10 text-center sm:px-6 sm:pb-10 sm:pt-14">
+        <div className="relative z-10 px-4 pb-8 pt-10 text-center sm:px-6 sm:pb-12 sm:pt-14">
+          <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-900 shadow-sm ring-1 ring-amber-200/70 backdrop-blur">
+            <Sparkles className="h-3 w-3 text-amber-500" />
+            Ready when you are
+          </span>
           <h1 className="mx-auto max-w-3xl text-2xl font-black leading-[1.15] tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
             {mode === "known"
               ? t("hero.planTrip")
-              : "Tell us your budget and vibe, we will handle the whole journey"}
+              : "Tell us your budget and vibe, we'll handle the whole journey"}
           </h1>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
             <span className="flex items-center gap-1">
@@ -674,32 +679,45 @@ export function Advisor() {
 
         {!submitted && !loading && destinations.length === 0 && (
           <section>
-            <h2 className="mb-3 text-3xl font-black tracking-tight text-slate-900">
-              The whole trip, not just the destination
-            </h2>
-            <p className="mb-8 max-w-3xl text-slate-600">
-              Pick a vibe above to get started, or see what&apos;s built in below.
-            </p>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="mb-8 text-center">
+              <h2 className="mb-3 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+                Your whole trip, thought through
+              </h2>
+              <p className="mx-auto max-w-2xl text-slate-600">
+                Fill in the search above and we&apos;ll take it from there — everything you need to
+                pack a bag and go.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Feature
+                emoji="🧭"
                 title="Destinations that fit you"
                 body="Tell us your dates, budget, climate, vibe, and any quirky constraint (cat, wifi, motion-sick partner, want to feel small). We rank for those, not against them."
               />
               <Feature
+                emoji="💼"
                 title="Everything to book"
-                body="Flights sorted cheapest-first, hotels in your budget with booking links, local transport (metro cards, rentals), and a clear budget breakdown."
+                body="Flights sorted cheapest-first, hotels in your budget with booking links, local transport, and a clear budget breakdown."
               />
               <Feature
+                emoji="🗓"
                 title="Everything to do"
                 body="Day-by-day itinerary, top things to do, restaurants with signature dishes, and events happening during your stay."
               />
               <Feature
+                emoji="🤝"
                 title="Travel with others"
                 body="Save destinations to favorites, host your own group trip, or find travelers already headed your way."
               />
               <Feature
+                emoji="⭐"
                 title="Real traveler reviews"
                 body="See what solo travelers, couples, families, and friends say — filter by trip type to find voices like yours."
+              />
+              <Feature
+                emoji="✨"
+                title="Insider tips"
+                body="Small local knowledge that guides miss — best time to visit the popular spots, what to skip, what locals actually eat."
               />
             </div>
           </section>
@@ -713,9 +731,18 @@ export function Advisor() {
 const inputCls =
   "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#00aa6c] focus:outline-none focus:ring-1 focus:ring-[#00aa6c]";
 
-function Feature({ title, body }: { title: string; body: string }) {
+function Feature({
+  emoji,
+  title,
+  body,
+}: {
+  emoji: string;
+  title: string;
+  body: string;
+}) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6">
+    <div className="rounded-2xl border border-amber-100/70 bg-gradient-to-br from-white to-amber-50/50 p-6 transition hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md">
+      <div className="mb-3 text-3xl leading-none">{emoji}</div>
       <h3 className="mb-2 text-lg font-black text-slate-900">{title}</h3>
       <p className="text-sm leading-relaxed text-slate-600">{body}</p>
     </div>
