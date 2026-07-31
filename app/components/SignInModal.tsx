@@ -63,10 +63,10 @@ export function SignInModal({ onClose }: { onClose: () => void }) {
           {view === "initial" && (
             <>
               <h2 className="mb-1 text-center text-2xl font-black leading-tight text-[#004f32]">
-                Welcome to VoyPilot
+                {t("auth.welcome")}
               </h2>
               <p className="mb-6 text-center text-sm text-slate-600">
-                Save your trips, sync across devices, and unlock the full experience.
+                {t("auth.saveSync")}
               </p>
 
               <div className="space-y-2.5">
@@ -78,20 +78,20 @@ export function SignInModal({ onClose }: { onClose: () => void }) {
                   className="flex w-full items-center justify-center gap-3 rounded-full border border-[#004f32] bg-white px-5 py-3 text-base font-bold text-[#004f32] transition hover:bg-slate-50"
                 >
                   <GoogleIcon className="h-5 w-5" />
-                  Continue with Google
+                  {t("auth.continueGoogle")}
                 </button>
                 <button
                   onClick={() => setView("email")}
                   className="flex w-full items-center justify-center gap-3 rounded-full border border-[#004f32] bg-white px-5 py-3 text-base font-bold text-[#004f32] transition hover:bg-slate-50"
                 >
                   <Mail className="h-5 w-5" />
-                  Continue with email
+                  {t("auth.continueEmail")}
                 </button>
               </div>
 
               <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-wider text-slate-500">
                 <div className="h-px flex-1 bg-slate-200" />
-                <span>or</span>
+                <span>{t("auth.or")}</span>
                 <div className="h-px flex-1 bg-slate-200" />
               </div>
 
@@ -100,11 +100,11 @@ export function SignInModal({ onClose }: { onClose: () => void }) {
                 className="flex w-full items-center justify-center gap-2 rounded-full bg-slate-100 px-5 py-3 text-base font-bold text-slate-700 transition hover:bg-slate-200"
               >
                 <User className="h-5 w-5" />
-                Continue as guest
+                {t("auth.continueGuest")}
                 <ArrowRight className="h-4 w-4" />
               </button>
               <p className="mt-2 text-center text-xs text-slate-500">
-                Guests can browse and plan freely — but favourites and trips only stay on this device.
+                {t("auth.guestNote")}
               </p>
             </>
           )}
@@ -126,6 +126,7 @@ export function SignInModal({ onClose }: { onClose: () => void }) {
 }
 
 function EmailView({ onSubmit }: { onSubmit: (email: string) => void }) {
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   return (
@@ -137,10 +138,12 @@ function EmailView({ onSubmit }: { onSubmit: (email: string) => void }) {
       className="space-y-4"
     >
       <h2 className="text-center text-2xl font-black leading-tight text-[#004f32]">
-        Continue with email
+        {t("auth.emailViewTitle")}
       </h2>
       <label className="block">
-        <span className="mb-1 block text-sm font-bold text-slate-800">Email address</span>
+        <span className="mb-1 block text-sm font-bold text-slate-800">
+          {t("auth.emailAddress")}
+        </span>
         <input
           type="email"
           value={email}
@@ -157,10 +160,10 @@ function EmailView({ onSubmit }: { onSubmit: (email: string) => void }) {
         disabled={!valid}
         className="w-full rounded-full bg-[#004f32] px-6 py-3 text-base font-bold text-white transition hover:bg-[#003b26] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Continue
+        {t("auth.continue")}
       </button>
       <p className="text-center text-xs text-slate-500">
-        We&apos;ll create your account automatically if it&apos;s your first time.
+        {t("auth.autoCreate")}
       </p>
     </form>
   );

@@ -248,7 +248,39 @@ export type TKey =
   | "fav.findMore"
   | "fav.viewPlan"
   | "fav.saved"
-  | "fav.startExploring";
+  | "fav.startExploring"
+  // Hero on the home page
+  | "hero.greetingBadge"
+  | "hero.headingDiscover"
+  | "ticker.flights"
+  | "ticker.hotels"
+  | "ticker.itinerary"
+  | "ticker.transport"
+  | "ticker.groupMatch"
+  // Feature grid on the home page
+  | "features.heading"
+  | "features.subtitle"
+  | "feature.destinations.title"
+  | "feature.destinations.body"
+  | "feature.book.title"
+  | "feature.book.body"
+  | "feature.do.title"
+  | "feature.do.body"
+  | "feature.others.title"
+  | "feature.others.body"
+  | "feature.reviews.title"
+  | "feature.reviews.body"
+  | "feature.tips.title"
+  | "feature.tips.body"
+  // Sign-in modal
+  | "auth.welcome"
+  | "auth.saveSync"
+  | "auth.or"
+  | "auth.continueGuest"
+  | "auth.guestNote"
+  | "auth.emailAddress"
+  | "auth.autoCreate"
+  | "auth.emailViewTitle";
 
 type Dict = Record<TKey, string>;
 
@@ -505,6 +537,35 @@ const en: Dict = {
   "budget.misc": "Other",
   "budget.total": "Total",
   "budget.perPerson": "~{amount} {currency} per person ({n} travelers)",
+  "hero.greetingBadge": "Ready when you are",
+  "hero.headingDiscover": "Tell us your budget and vibe, we'll handle the whole journey",
+  "ticker.flights": "Flights",
+  "ticker.hotels": "Hotels",
+  "ticker.itinerary": "Itinerary",
+  "ticker.transport": "Transport",
+  "ticker.groupMatch": "Group trip match",
+  "features.heading": "Your whole trip, thought through",
+  "features.subtitle": "Fill in the search above and we'll take it from there — everything you need to pack a bag and go.",
+  "feature.destinations.title": "Destinations that fit you",
+  "feature.destinations.body": "Tell us your dates, budget, climate, vibe, and any quirky constraint (cat, wifi, motion-sick partner, want to feel small). We rank for those, not against them.",
+  "feature.book.title": "Everything to book",
+  "feature.book.body": "Flights sorted cheapest-first, hotels in your budget with booking links, local transport, and a clear budget breakdown.",
+  "feature.do.title": "Everything to do",
+  "feature.do.body": "Day-by-day itinerary, top things to do, restaurants with signature dishes, and events happening during your stay.",
+  "feature.others.title": "Travel with others",
+  "feature.others.body": "Save destinations to favorites, host your own group trip, or find travelers already headed your way.",
+  "feature.reviews.title": "Real traveler reviews",
+  "feature.reviews.body": "See what solo travelers, couples, families, and friends say — filter by trip type to find voices like yours.",
+  "feature.tips.title": "Insider tips",
+  "feature.tips.body": "Small local knowledge that guides miss — best time to visit the popular spots, what to skip, what locals actually eat.",
+  "auth.welcome": "Welcome to VoyPilot",
+  "auth.saveSync": "Save your trips, sync across devices, and unlock the full experience.",
+  "auth.or": "or",
+  "auth.continueGuest": "Continue as guest",
+  "auth.guestNote": "Guests can browse and plan freely — but favourites and trips only stay on this device.",
+  "auth.emailAddress": "Email address",
+  "auth.autoCreate": "We'll create your account automatically if it's your first time.",
+  "auth.emailViewTitle": "Continue with email",
 };
 
 const es: Dict = {
@@ -760,6 +821,35 @@ const es: Dict = {
   "budget.misc": "Otros",
   "budget.total": "Total",
   "budget.perPerson": "~{amount} {currency} por persona ({n} viajeros)",
+  "hero.greetingBadge": "Cuando quieras",
+  "hero.headingDiscover": "Cuéntanos tu presupuesto y tu vibra, nosotros nos encargamos de todo el viaje",
+  "ticker.flights": "Vuelos",
+  "ticker.hotels": "Hoteles",
+  "ticker.itinerary": "Itinerario",
+  "ticker.transport": "Transporte",
+  "ticker.groupMatch": "Grupos de viaje",
+  "features.heading": "Todo tu viaje, pensado al detalle",
+  "features.subtitle": "Completa la búsqueda arriba y nos encargamos del resto — todo lo que necesitas para hacer la maleta e irte.",
+  "feature.destinations.title": "Destinos que encajan contigo",
+  "feature.destinations.body": "Cuéntanos tus fechas, presupuesto, clima, vibra y cualquier condición particular (gato, wifi, pareja mareada, ganas de sentirse pequeño). Puntuamos a favor, no en contra.",
+  "feature.book.title": "Todo para reservar",
+  "feature.book.body": "Vuelos ordenados de más barato a más caro, hoteles dentro de tu presupuesto con enlaces de reserva, transporte local y un desglose claro del presupuesto.",
+  "feature.do.title": "Todo para hacer",
+  "feature.do.body": "Itinerario día a día, mejores actividades, restaurantes con platos característicos y eventos durante tu estancia.",
+  "feature.others.title": "Viaja con otros",
+  "feature.others.body": "Guarda destinos en favoritos, organiza tu propio viaje en grupo o encuentra viajeros que ya van a tu destino.",
+  "feature.reviews.title": "Opiniones reales de viajeros",
+  "feature.reviews.body": "Descubre lo que dicen viajeros solos, parejas, familias y amigos — filtra por tipo de viaje para encontrar voces como la tuya.",
+  "feature.tips.title": "Consejos de insider",
+  "feature.tips.body": "Conocimiento local que se les escapa a las guías — mejor momento para visitar los lugares populares, qué evitar, qué comen los locales de verdad.",
+  "auth.welcome": "Bienvenido a VoyPilot",
+  "auth.saveSync": "Guarda tus viajes, sincroniza entre dispositivos y desbloquea la experiencia completa.",
+  "auth.or": "o",
+  "auth.continueGuest": "Continuar como invitado",
+  "auth.guestNote": "Los invitados pueden navegar y planificar libremente — pero los favoritos y viajes solo quedan en este dispositivo.",
+  "auth.emailAddress": "Correo electrónico",
+  "auth.autoCreate": "Crearemos tu cuenta automáticamente si es tu primera vez.",
+  "auth.emailViewTitle": "Continuar con correo",
 };
 
 const fr: Dict = {
@@ -1015,6 +1105,35 @@ const fr: Dict = {
   "budget.misc": "Divers",
   "budget.total": "Total",
   "budget.perPerson": "~{amount} {currency} par personne ({n} voyageurs)",
+  "hero.greetingBadge": "Quand tu veux",
+  "hero.headingDiscover": "Dis-nous ton budget et ton style, on s'occupe de tout le voyage",
+  "ticker.flights": "Vols",
+  "ticker.hotels": "Hôtels",
+  "ticker.itinerary": "Itinéraire",
+  "ticker.transport": "Transport",
+  "ticker.groupMatch": "Groupes de voyage",
+  "features.heading": "Tout ton voyage, pensé en détail",
+  "features.subtitle": "Remplis la recherche ci-dessus et on s'occupe du reste — tout ce qu'il te faut pour faire ta valise et partir.",
+  "feature.destinations.title": "Des destinations qui te correspondent",
+  "feature.destinations.body": "Dis-nous tes dates, ton budget, le climat, ton style et toute contrainte particulière (chat, wifi, partenaire malade en voyage, envie de se sentir petit). On classe en fonction, pas contre.",
+  "feature.book.title": "Tout pour réserver",
+  "feature.book.body": "Vols triés du moins cher, hôtels dans ton budget avec liens de réservation, transport local et une répartition claire du budget.",
+  "feature.do.title": "Tout pour faire",
+  "feature.do.body": "Itinéraire jour par jour, meilleures activités, restaurants avec leurs plats signature et événements pendant ton séjour.",
+  "feature.others.title": "Voyager avec d'autres",
+  "feature.others.body": "Enregistre des destinations en favoris, organise ton propre voyage de groupe ou trouve des voyageurs qui vont au même endroit.",
+  "feature.reviews.title": "Vrais avis de voyageurs",
+  "feature.reviews.body": "Découvre ce que disent les voyageurs solos, couples, familles et amis — filtre par type de voyage pour trouver des voix comme la tienne.",
+  "feature.tips.title": "Conseils d'initiés",
+  "feature.tips.body": "Le savoir local que les guides oublient — meilleur moment pour visiter les lieux populaires, ce qu'il faut éviter, ce que mangent vraiment les locaux.",
+  "auth.welcome": "Bienvenue sur VoyPilot",
+  "auth.saveSync": "Enregistre tes voyages, synchronise entre appareils et débloque l'expérience complète.",
+  "auth.or": "ou",
+  "auth.continueGuest": "Continuer en tant qu'invité",
+  "auth.guestNote": "Les invités peuvent explorer et planifier librement — mais les favoris et voyages ne restent que sur cet appareil.",
+  "auth.emailAddress": "Adresse e-mail",
+  "auth.autoCreate": "Nous créerons ton compte automatiquement si c'est ta première fois.",
+  "auth.emailViewTitle": "Continuer par e-mail",
 };
 
 const de: Dict = {
@@ -1270,6 +1389,35 @@ const de: Dict = {
   "budget.misc": "Sonstiges",
   "budget.total": "Gesamt",
   "budget.perPerson": "~{amount} {currency} pro Person ({n} Reisende)",
+  "hero.greetingBadge": "Bereit für dich",
+  "hero.headingDiscover": "Sag uns dein Budget und deinen Vibe, wir kümmern uns um die ganze Reise",
+  "ticker.flights": "Flüge",
+  "ticker.hotels": "Hotels",
+  "ticker.itinerary": "Reiseplan",
+  "ticker.transport": "Transport",
+  "ticker.groupMatch": "Reisegruppen",
+  "features.heading": "Deine ganze Reise, durchdacht",
+  "features.subtitle": "Fülle die Suche oben aus und wir übernehmen den Rest — alles, was du brauchst, um zu packen und loszuziehen.",
+  "feature.destinations.title": "Reiseziele, die zu dir passen",
+  "feature.destinations.body": "Sag uns Daten, Budget, Klima, Vibe und jede besondere Anforderung (Katze, WLAN, reisekrank, Wunsch nach dem Gefühl klein zu sein). Wir bewerten danach, nicht dagegen.",
+  "feature.book.title": "Alles zum Buchen",
+  "feature.book.body": "Flüge sortiert nach Preis, Hotels im Budget mit Buchungslinks, lokaler Transport und eine klare Budgetaufteilung.",
+  "feature.do.title": "Alles zum Erleben",
+  "feature.do.body": "Tag-für-Tag-Reiseplan, beste Aktivitäten, Restaurants mit Signature-Gerichten und Events während deines Aufenthalts.",
+  "feature.others.title": "Mit anderen reisen",
+  "feature.others.body": "Speichere Reiseziele als Favoriten, veranstalte deine eigene Gruppenreise oder finde Reisende, die schon in deine Richtung wollen.",
+  "feature.reviews.title": "Echte Reiseberichte",
+  "feature.reviews.body": "Sieh, was Solo-Reisende, Paare, Familien und Freunde sagen — filtere nach Reiseart, um Stimmen wie deine zu finden.",
+  "feature.tips.title": "Insider-Tipps",
+  "feature.tips.body": "Lokales Wissen, das Reiseführer übersehen — beste Besuchszeit für beliebte Orte, was man auslassen kann, was Einheimische wirklich essen.",
+  "auth.welcome": "Willkommen bei VoyPilot",
+  "auth.saveSync": "Speichere deine Reisen, synchronisiere zwischen Geräten und schalte das volle Erlebnis frei.",
+  "auth.or": "oder",
+  "auth.continueGuest": "Als Gast fortfahren",
+  "auth.guestNote": "Gäste können frei stöbern und planen — Favoriten und Reisen bleiben aber nur auf diesem Gerät.",
+  "auth.emailAddress": "E-Mail-Adresse",
+  "auth.autoCreate": "Wir erstellen dein Konto automatisch, wenn es dein erstes Mal ist.",
+  "auth.emailViewTitle": "Mit E-Mail fortfahren",
 };
 
 const it: Dict = {
@@ -1525,6 +1673,35 @@ const it: Dict = {
   "budget.misc": "Altro",
   "budget.total": "Totale",
   "budget.perPerson": "~{amount} {currency} a persona ({n} viaggiatori)",
+  "hero.greetingBadge": "Quando vuoi",
+  "hero.headingDiscover": "Dicci il tuo budget e il tuo vibe, pensiamo noi al viaggio",
+  "ticker.flights": "Voli",
+  "ticker.hotels": "Hotel",
+  "ticker.itinerary": "Itinerario",
+  "ticker.transport": "Trasporti",
+  "ticker.groupMatch": "Gruppi di viaggio",
+  "features.heading": "Tutto il tuo viaggio, pensato nel dettaglio",
+  "features.subtitle": "Compila la ricerca sopra e ci pensiamo noi — tutto quello che ti serve per fare la valigia e partire.",
+  "feature.destinations.title": "Destinazioni che ti si addicono",
+  "feature.destinations.body": "Dicci date, budget, clima, vibe e ogni vincolo particolare (gatto, wifi, partner che soffre il viaggio, voglia di sentirsi piccoli). Classifichiamo a favore, non contro.",
+  "feature.book.title": "Tutto da prenotare",
+  "feature.book.body": "Voli ordinati dal più economico, hotel nel tuo budget con link di prenotazione, trasporto locale e una chiara ripartizione del budget.",
+  "feature.do.title": "Tutto da fare",
+  "feature.do.body": "Itinerario giorno per giorno, migliori attività, ristoranti con piatti signature ed eventi durante il tuo soggiorno.",
+  "feature.others.title": "Viaggia con altri",
+  "feature.others.body": "Salva destinazioni nei preferiti, organizza il tuo viaggio di gruppo o trova viaggiatori che vanno nella tua direzione.",
+  "feature.reviews.title": "Recensioni vere di viaggiatori",
+  "feature.reviews.body": "Scopri cosa dicono viaggiatori solitari, coppie, famiglie e amici — filtra per tipo di viaggio per trovare voci come la tua.",
+  "feature.tips.title": "Consigli da esperti",
+  "feature.tips.body": "Conoscenze locali che le guide si perdono — momento migliore per visitare i luoghi popolari, cosa saltare, cosa mangiano davvero i locali.",
+  "auth.welcome": "Benvenuto in VoyPilot",
+  "auth.saveSync": "Salva i tuoi viaggi, sincronizza tra dispositivi e sblocca l'esperienza completa.",
+  "auth.or": "o",
+  "auth.continueGuest": "Continua come ospite",
+  "auth.guestNote": "Gli ospiti possono navigare e pianificare liberamente — ma preferiti e viaggi restano solo su questo dispositivo.",
+  "auth.emailAddress": "Indirizzo email",
+  "auth.autoCreate": "Creeremo il tuo account automaticamente se è la prima volta.",
+  "auth.emailViewTitle": "Continua con l'email",
 };
 
 const pt: Dict = {
@@ -1780,6 +1957,35 @@ const pt: Dict = {
   "budget.misc": "Outros",
   "budget.total": "Total",
   "budget.perPerson": "~{amount} {currency} por pessoa ({n} viajantes)",
+  "hero.greetingBadge": "Quando quiseres",
+  "hero.headingDiscover": "Diz-nos o teu orçamento e a tua vibe, nós tratamos de toda a viagem",
+  "ticker.flights": "Voos",
+  "ticker.hotels": "Hotéis",
+  "ticker.itinerary": "Itinerário",
+  "ticker.transport": "Transporte",
+  "ticker.groupMatch": "Grupos de viagem",
+  "features.heading": "Toda a tua viagem, pensada ao pormenor",
+  "features.subtitle": "Preenche a pesquisa acima e nós tratamos do resto — tudo o que precisas para fazer as malas e partir.",
+  "feature.destinations.title": "Destinos à tua medida",
+  "feature.destinations.body": "Diz-nos as datas, orçamento, clima, vibe e qualquer condição especial (gato, wifi, parceiro enjoado em viagem, vontade de sentir-se pequeno). Classificamos a favor, não contra.",
+  "feature.book.title": "Tudo para reservar",
+  "feature.book.body": "Voos ordenados do mais barato, hotéis dentro do orçamento com links de reserva, transporte local e um plano claro do orçamento.",
+  "feature.do.title": "Tudo para fazer",
+  "feature.do.body": "Itinerário dia a dia, melhores atividades, restaurantes com pratos assinatura e eventos durante a tua estadia.",
+  "feature.others.title": "Viaja com outros",
+  "feature.others.body": "Guarda destinos nos favoritos, organiza a tua própria viagem em grupo ou encontra viajantes que vão para o mesmo sítio.",
+  "feature.reviews.title": "Avaliações reais de viajantes",
+  "feature.reviews.body": "Vê o que dizem viajantes a solo, casais, famílias e amigos — filtra por tipo de viagem para encontrar vozes como a tua.",
+  "feature.tips.title": "Dicas de insider",
+  "feature.tips.body": "Conhecimento local que os guias perdem — melhor altura para visitar os locais populares, o que evitar, o que os locais comem mesmo.",
+  "auth.welcome": "Bem-vindo ao VoyPilot",
+  "auth.saveSync": "Guarda as tuas viagens, sincroniza entre dispositivos e desbloqueia a experiência completa.",
+  "auth.or": "ou",
+  "auth.continueGuest": "Continuar como convidado",
+  "auth.guestNote": "Convidados podem navegar e planear livremente — mas favoritos e viagens ficam apenas neste dispositivo.",
+  "auth.emailAddress": "Endereço de email",
+  "auth.autoCreate": "Criaremos a tua conta automaticamente se for a primeira vez.",
+  "auth.emailViewTitle": "Continuar por email",
 };
 
 const ja: Dict = {
@@ -2035,6 +2241,35 @@ const ja: Dict = {
   "budget.misc": "その他",
   "budget.total": "合計",
   "budget.perPerson": "1人あたり ~{amount} {currency}（{n}人）",
+  "hero.greetingBadge": "準備はいいですか",
+  "hero.headingDiscover": "予算とご希望を教えてください。旅の計画は私たちにお任せください",
+  "ticker.flights": "フライト",
+  "ticker.hotels": "ホテル",
+  "ticker.itinerary": "旅程",
+  "ticker.transport": "交通",
+  "ticker.groupMatch": "グループ旅行マッチ",
+  "features.heading": "旅のすべてを、きめ細かく",
+  "features.subtitle": "上で検索を入力してください。あとはお任せください — 荷物を詰めて出発するのに必要なすべて。",
+  "feature.destinations.title": "あなたに合った目的地",
+  "feature.destinations.body": "日程、予算、気候、雰囲気、そして特別な条件（猫、Wi-Fi、乗り物酔いのパートナー、小さく感じたい）を教えてください。それらを反映してランク付けします。",
+  "feature.book.title": "予約に必要なすべて",
+  "feature.book.body": "安い順の航空券、予算内のホテルと予約リンク、現地交通、そして明確な予算の内訳。",
+  "feature.do.title": "体験のすべて",
+  "feature.do.body": "日ごとの旅程、おすすめアクティビティ、名物料理のあるレストラン、滞在中のイベント。",
+  "feature.others.title": "他の旅行者と一緒に",
+  "feature.others.body": "目的地をお気に入りに保存、グループ旅行を主催、または同じ方向に向かう旅行者を見つけましょう。",
+  "feature.reviews.title": "実際の旅行者のレビュー",
+  "feature.reviews.body": "一人旅、カップル、家族、友人グループの声を確認 — 旅行タイプでフィルタリング。",
+  "feature.tips.title": "現地の裏情報",
+  "feature.tips.body": "ガイドブックが見落とす地元の知識 — 人気スポットの最適時間、スキップすべきもの、地元の人が本当に食べているもの。",
+  "auth.welcome": "VoyPilotへようこそ",
+  "auth.saveSync": "旅を保存し、デバイス間で同期し、フル体験を解放しましょう。",
+  "auth.or": "または",
+  "auth.continueGuest": "ゲストとして続ける",
+  "auth.guestNote": "ゲストは自由に閲覧・プランニングできますが、お気に入りと旅行はこのデバイスにのみ保存されます。",
+  "auth.emailAddress": "メールアドレス",
+  "auth.autoCreate": "初めての場合、アカウントを自動的に作成します。",
+  "auth.emailViewTitle": "メールで続ける",
 };
 
 const zh: Dict = {
@@ -2290,6 +2525,35 @@ const zh: Dict = {
   "budget.misc": "其他",
   "budget.total": "总计",
   "budget.perPerson": "~每人 {amount} {currency}（{n}位旅客）",
+  "hero.greetingBadge": "随时出发",
+  "hero.headingDiscover": "告诉我们你的预算和喜好，整趟旅程交给我们",
+  "ticker.flights": "航班",
+  "ticker.hotels": "酒店",
+  "ticker.itinerary": "行程",
+  "ticker.transport": "交通",
+  "ticker.groupMatch": "团队旅行匹配",
+  "features.heading": "你的整个旅程，都为你想到了",
+  "features.subtitle": "在上方填写搜索，其余交给我们 — 收拾行李出发所需的一切。",
+  "feature.destinations.title": "适合你的目的地",
+  "feature.destinations.body": "告诉我们你的日期、预算、气候、喜好和任何特殊要求（宠物猫、Wi-Fi、晕车的伴侣、想感到渺小）。我们根据这些排名，而不是排除。",
+  "feature.book.title": "一切预订所需",
+  "feature.book.body": "按最低价排序的航班、预算内的酒店及预订链接、当地交通，以及清晰的预算明细。",
+  "feature.do.title": "一切体验所需",
+  "feature.do.body": "每日行程、热门活动、招牌菜餐厅，以及你停留期间举办的活动。",
+  "feature.others.title": "与他人同行",
+  "feature.others.body": "将目的地保存到收藏、主办你的团队旅行，或找到已前往同一方向的旅行者。",
+  "feature.reviews.title": "真实的旅行者评价",
+  "feature.reviews.body": "看看独自旅行者、情侣、家庭和朋友的评价 — 按旅行类型筛选，找到与你相似的声音。",
+  "feature.tips.title": "内行提示",
+  "feature.tips.body": "指南遗漏的本地知识 — 访问热门地点的最佳时间、可以跳过什么、本地人真正吃什么。",
+  "auth.welcome": "欢迎来到 VoyPilot",
+  "auth.saveSync": "保存你的旅程，跨设备同步，解锁完整体验。",
+  "auth.or": "或",
+  "auth.continueGuest": "以访客身份继续",
+  "auth.guestNote": "访客可自由浏览和规划，但收藏和行程仅保存在此设备上。",
+  "auth.emailAddress": "邮箱地址",
+  "auth.autoCreate": "首次使用会自动为你创建账户。",
+  "auth.emailViewTitle": "通过邮箱继续",
 };
 
 export const TRANSLATIONS: Record<string, Dict> = {

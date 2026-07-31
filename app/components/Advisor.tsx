@@ -356,32 +356,30 @@ export function Advisor() {
         <div className="relative z-10 px-4 pb-10 pt-12 text-center sm:px-6 sm:pb-16 sm:pt-16">
           <span className="mb-5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-rose-600 shadow-md ring-1 ring-rose-200 backdrop-blur">
             <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            Ready when you are
+            {t("hero.greetingBadge")}
           </span>
           <h1 className="mx-auto max-w-3xl text-2xl font-black leading-[1.15] tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-            {mode === "known"
-              ? t("hero.planTrip")
-              : "Tell us your budget and vibe, we'll handle the whole journey"}
+            {mode === "known" ? t("hero.planTrip") : t("hero.headingDiscover")}
           </h1>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] font-bold uppercase tracking-wider text-slate-500">
             <span className="flex items-center gap-1">
-              <Plane className="h-3.5 w-3.5" /> Flights
+              <Plane className="h-3.5 w-3.5" /> {t("ticker.flights")}
             </span>
             <span aria-hidden>·</span>
             <span className="flex items-center gap-1">
-              <Hotel className="h-3.5 w-3.5" /> Hotels
+              <Hotel className="h-3.5 w-3.5" /> {t("ticker.hotels")}
             </span>
             <span aria-hidden>·</span>
             <span className="flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" /> Itinerary
+              <Calendar className="h-3.5 w-3.5" /> {t("ticker.itinerary")}
             </span>
             <span aria-hidden>·</span>
             <span className="flex items-center gap-1">
-              <Bus className="h-3.5 w-3.5" /> Transport
+              <Bus className="h-3.5 w-3.5" /> {t("ticker.transport")}
             </span>
             <span aria-hidden>·</span>
             <span className="flex items-center gap-1">
-              <Users className="h-3.5 w-3.5" /> Group trip match
+              <Users className="h-3.5 w-3.5" /> {t("ticker.groupMatch")}
             </span>
           </div>
         </div>
@@ -715,48 +713,47 @@ export function Advisor() {
           <section>
             <div className="mb-8 text-center">
               <h2 className="mb-3 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
-                Your whole trip, thought through
+                {t("features.heading")}
               </h2>
               <p className="mx-auto max-w-2xl text-slate-600">
-                Fill in the search above and we&apos;ll take it from there — everything you need to
-                pack a bag and go.
+                {t("features.subtitle")}
               </p>
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <Feature
                 emoji="🧭"
-                title="Destinations that fit you"
-                body="Tell us your dates, budget, climate, vibe, and any quirky constraint (cat, wifi, motion-sick partner, want to feel small). We rank for those, not against them."
+                title={t("feature.destinations.title")}
+                body={t("feature.destinations.body")}
                 color="emerald"
               />
               <Feature
                 emoji="💼"
-                title="Everything to book"
-                body="Flights sorted cheapest-first, hotels in your budget with booking links, local transport, and a clear budget breakdown."
+                title={t("feature.book.title")}
+                body={t("feature.book.body")}
                 color="rose"
               />
               <Feature
                 emoji="🗓"
-                title="Everything to do"
-                body="Day-by-day itinerary, top things to do, restaurants with signature dishes, and events happening during your stay."
+                title={t("feature.do.title")}
+                body={t("feature.do.body")}
                 color="indigo"
               />
               <Feature
                 emoji="🤝"
-                title="Travel with others"
-                body="Save destinations to favorites, host your own group trip, or find travelers already headed your way."
+                title={t("feature.others.title")}
+                body={t("feature.others.body")}
                 color="sky"
               />
               <Feature
                 emoji="⭐"
-                title="Real traveler reviews"
-                body="See what solo travelers, couples, families, and friends say — filter by trip type to find voices like yours."
+                title={t("feature.reviews.title")}
+                body={t("feature.reviews.body")}
                 color="amber"
               />
               <Feature
                 emoji="✨"
-                title="Insider tips"
-                body="Small local knowledge that guides miss — best time to visit the popular spots, what to skip, what locals actually eat."
+                title={t("feature.tips.title")}
+                body={t("feature.tips.body")}
                 color="fuchsia"
               />
             </div>
