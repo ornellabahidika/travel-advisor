@@ -711,8 +711,6 @@ export function Advisor() {
           </div>
         )}
 
-        <ContinueSection />
-
         {!submitted && !loading && destinations.length === 0 && (
           <section>
             <div className="mb-8 text-center">
@@ -764,6 +762,8 @@ export function Advisor() {
             </div>
           </section>
         )}
+
+        <ContinueSection />
 
       </div>
     </div>
