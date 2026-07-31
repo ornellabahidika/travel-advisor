@@ -34,6 +34,7 @@ export type EventName =
   | "join_request_sent"
   | "signed_in"
   | "signed_out"
+  | "continued_as_guest"
   | "language_changed"
   | "vibe_picked"
   | "things_to_do_expanded"
