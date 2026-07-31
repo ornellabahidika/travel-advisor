@@ -242,57 +242,93 @@ export function Advisor() {
 
   return (
     <div>
-      {/* Hero — soft gradient + four floating travel-themed decorations
-          (plane, checklist, luggage, people) placed in each corner. No
-          external images: all built from lucide-react icons so the page
-          loads instantly and scales perfectly on any screen. */}
-      <section className="relative mx-auto max-w-7xl overflow-hidden">
+      {/* Hero — vibrant multi-colour gradient, soft glow blobs behind
+          the content, and travel decorations popping out around the
+          edges. All built from lucide-react icons + Tailwind — no
+          external image, no asset pipeline. */}
+      <section className="relative mx-auto max-w-7xl overflow-hidden rounded-b-[2.5rem]">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-sky-100 via-white to-amber-100/70"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-sky-200 via-amber-100 to-rose-100"
         />
+        {/* Soft yellow "sun" glow top-right */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-yellow-300/60 blur-3xl"
+        />
+        {/* Soft pink glow bottom-left */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-20 -left-16 h-64 w-64 rounded-full bg-rose-300/50 blur-3xl"
+        />
+        {/* Soft cyan glow top-left for balance */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-10 left-1/3 h-40 w-40 rounded-full bg-cyan-200/60 blur-3xl"
+        />
+
         {/* Decorative dotted travel-route arcs */}
         <svg
           aria-hidden
           className="pointer-events-none absolute inset-0 h-full w-full"
-          viewBox="0 0 1200 220"
+          viewBox="0 0 1200 260"
           preserveAspectRatio="none"
         >
           <path
-            d="M 80 140 Q 300 60 500 130 T 900 110 T 1140 80"
-            stroke="#67e8f9"
-            strokeWidth="2"
-            strokeDasharray="4 6"
+            d="M 80 160 Q 300 60 500 140 T 900 120 T 1140 90"
+            stroke="#ffffff"
+            strokeWidth="2.5"
+            strokeDasharray="4 8"
             fill="none"
-            opacity="0.5"
+            opacity="0.8"
           />
           <path
-            d="M 60 60 Q 250 130 460 90 T 880 140 T 1140 130"
-            stroke="#fcd34d"
+            d="M 60 70 Q 250 150 460 100 T 880 160 T 1140 150"
+            stroke="#ffffff"
             strokeWidth="2"
-            strokeDasharray="4 6"
+            strokeDasharray="3 6"
             fill="none"
-            opacity="0.4"
+            opacity="0.55"
           />
         </svg>
 
         {/* Top-left: checklist */}
         <div
           aria-hidden
-          className="pointer-events-none absolute left-2 top-3 hidden rotate-[-8deg] sm:left-6 sm:top-5 sm:block"
+          className="pointer-events-none absolute left-2 top-3 rotate-[-8deg] sm:left-6 sm:top-5"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100/80 text-emerald-600 shadow-sm sm:h-14 sm:w-14">
-            <ClipboardCheck className="h-6 w-6 sm:h-7 sm:w-7" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400 text-white shadow-lg shadow-emerald-500/25 ring-4 ring-white/60 sm:h-16 sm:w-16">
+            <ClipboardCheck className="h-6 w-6 sm:h-8 sm:w-8" />
           </div>
         </div>
 
-        {/* Top-right: plane (slight tilt, suggesting flight) */}
+        {/* Top-right: plane (tilted up like takeoff) */}
         <div
           aria-hidden
           className="pointer-events-none absolute right-3 top-2 rotate-[20deg] sm:right-8 sm:top-4"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100/80 text-amber-600 shadow-sm sm:h-14 sm:w-14">
-            <Plane className="h-6 w-6 sm:h-7 sm:w-7" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-400 text-white shadow-lg shadow-amber-500/25 ring-4 ring-white/60 sm:h-16 sm:w-16">
+            <Plane className="h-6 w-6 sm:h-8 sm:w-8" />
+          </div>
+        </div>
+
+        {/* Mid-left: compass (extra decoration) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1 top-1/2 hidden -translate-y-1/2 rotate-[15deg] lg:block"
+        >
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400 text-white shadow-lg shadow-cyan-500/25 ring-4 ring-white/60">
+            <Compass className="h-7 w-7" />
+          </div>
+        </div>
+
+        {/* Mid-right: map pin (extra decoration) */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-1 top-1/2 hidden -translate-y-1/2 rotate-[-10deg] lg:block"
+        >
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-fuchsia-400 text-white shadow-lg shadow-fuchsia-500/25 ring-4 ring-white/60">
+            <MapPin className="h-7 w-7" />
           </div>
         </div>
 
@@ -301,8 +337,8 @@ export function Advisor() {
           aria-hidden
           className="pointer-events-none absolute bottom-2 left-3 rotate-[6deg] sm:bottom-3 sm:left-8"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100/80 text-indigo-600 shadow-sm sm:h-14 sm:w-14">
-            <Luggage className="h-6 w-6 sm:h-7 sm:w-7" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 ring-4 ring-white/60 sm:h-16 sm:w-16">
+            <Luggage className="h-6 w-6 sm:h-8 sm:w-8" />
           </div>
         </div>
 
@@ -311,15 +347,15 @@ export function Advisor() {
           aria-hidden
           className="pointer-events-none absolute bottom-2 right-3 rotate-[-6deg] sm:bottom-3 sm:right-8"
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100/80 text-rose-600 shadow-sm sm:h-14 sm:w-14">
-            <Users className="h-6 w-6 sm:h-7 sm:w-7" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/25 ring-4 ring-white/60 sm:h-16 sm:w-16">
+            <Users className="h-6 w-6 sm:h-8 sm:w-8" />
           </div>
         </div>
 
         {/* Hero text — sits above the decorations */}
-        <div className="relative z-10 px-4 pb-8 pt-10 text-center sm:px-6 sm:pb-12 sm:pt-14">
-          <span className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-900 shadow-sm ring-1 ring-amber-200/70 backdrop-blur">
-            <Sparkles className="h-3 w-3 text-amber-500" />
+        <div className="relative z-10 px-4 pb-10 pt-12 text-center sm:px-6 sm:pb-16 sm:pt-16">
+          <span className="mb-5 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-rose-600 shadow-md ring-1 ring-rose-200 backdrop-blur">
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
             Ready when you are
           </span>
           <h1 className="mx-auto max-w-3xl text-2xl font-black leading-[1.15] tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
@@ -688,36 +724,42 @@ export function Advisor() {
                 pack a bag and go.
               </p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               <Feature
                 emoji="🧭"
                 title="Destinations that fit you"
                 body="Tell us your dates, budget, climate, vibe, and any quirky constraint (cat, wifi, motion-sick partner, want to feel small). We rank for those, not against them."
+                color="emerald"
               />
               <Feature
                 emoji="💼"
                 title="Everything to book"
                 body="Flights sorted cheapest-first, hotels in your budget with booking links, local transport, and a clear budget breakdown."
+                color="rose"
               />
               <Feature
                 emoji="🗓"
                 title="Everything to do"
                 body="Day-by-day itinerary, top things to do, restaurants with signature dishes, and events happening during your stay."
+                color="indigo"
               />
               <Feature
                 emoji="🤝"
                 title="Travel with others"
                 body="Save destinations to favorites, host your own group trip, or find travelers already headed your way."
+                color="sky"
               />
               <Feature
                 emoji="⭐"
                 title="Real traveler reviews"
                 body="See what solo travelers, couples, families, and friends say — filter by trip type to find voices like yours."
+                color="amber"
               />
               <Feature
                 emoji="✨"
                 title="Insider tips"
                 body="Small local knowledge that guides miss — best time to visit the popular spots, what to skip, what locals actually eat."
+                color="fuchsia"
               />
             </div>
           </section>
@@ -731,18 +773,36 @@ export function Advisor() {
 const inputCls =
   "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-[#00aa6c] focus:outline-none focus:ring-1 focus:ring-[#00aa6c]";
 
+type FeatureColor = "emerald" | "rose" | "indigo" | "sky" | "amber" | "fuchsia";
+
+const FEATURE_COLOR: Record<FeatureColor, { tile: string; shadow: string }> = {
+  emerald: { tile: "bg-emerald-400", shadow: "shadow-emerald-500/25" },
+  rose: { tile: "bg-rose-500", shadow: "shadow-rose-500/25" },
+  indigo: { tile: "bg-indigo-500", shadow: "shadow-indigo-500/25" },
+  sky: { tile: "bg-sky-500", shadow: "shadow-sky-500/25" },
+  amber: { tile: "bg-amber-400", shadow: "shadow-amber-500/25" },
+  fuchsia: { tile: "bg-fuchsia-500", shadow: "shadow-fuchsia-500/25" },
+};
+
 function Feature({
   emoji,
   title,
   body,
+  color,
 }: {
   emoji: string;
   title: string;
   body: string;
+  color: FeatureColor;
 }) {
+  const c = FEATURE_COLOR[color];
   return (
-    <div className="rounded-2xl border border-amber-100/70 bg-gradient-to-br from-white to-amber-50/50 p-6 transition hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md">
-      <div className="mb-3 text-3xl leading-none">{emoji}</div>
+    <div className="group relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-xl">
+      <div
+        className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-3xl leading-none shadow-lg ring-4 ring-white transition group-hover:scale-105 ${c.tile} ${c.shadow}`}
+      >
+        {emoji}
+      </div>
       <h3 className="mb-2 text-lg font-black text-slate-900">{title}</h3>
       <p className="text-sm leading-relaxed text-slate-600">{body}</p>
     </div>
