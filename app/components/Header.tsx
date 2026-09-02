@@ -1,19 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { FavoritesButton } from "./FavoritesButton";
 import { LanguageSwitcher } from "./LanguageSwitcher";
-import { SignInModal } from "./SignInModal";
-import { UserMenu } from "./UserMenu";
-import { useAuth } from "@/lib/auth";
-import { useT } from "@/lib/language";
 
+// Sign-in is hidden until real Google OAuth + email magic-link auth is
+// wired up (see conversation with Ornella — waiting on Google Cloud
+// OAuth credentials + Resend API key). Recents and favourites still
+// persist device-locally via the "guest" key in lib/recents.ts, so
+// users pick up where they left off on the same browser without any
+// auth. To re-enable: restore the SignInModal + UserMenu block from
+// git history (previously in commit e2c9225).
 export function Header() {
-  const { t } = useT();
-  const { user } = useAuth();
-  const [signInOpen, setSignInOpen] = useState(false);
-
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-1.5 sm:px-6 sm:py-2">
@@ -32,20 +30,8 @@ export function Header() {
           <div className="hidden sm:block">
             <LanguageSwitcher />
           </div>
-          {user ? (
-            <UserMenu />
-          ) : (
-            <button
-              onClick={() => setSignInOpen(true)}
-              className="rounded-full bg-[#004f32] px-3 py-1 text-xs font-bold text-white hover:bg-[#003b26] sm:px-4 sm:py-1.5 sm:text-sm"
-            >
-              {t("auth.signIn")}
-            </button>
-          )}
         </div>
       </div>
-
-      {signInOpen && <SignInModal onClose={() => setSignInOpen(false)} />}
     </header>
   );
 }

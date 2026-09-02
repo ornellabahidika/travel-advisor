@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { ArrowRight, Calendar, MapPin, Trash2, Users } from "lucide-react";
 import { useRecents, removeRecentTrip, tripUrlFromRecent } from "@/lib/recents";
-import { useAuth } from "@/lib/auth";
 import { useT } from "@/lib/language";
 
 export function ContinueSection() {
   const { items } = useRecents();
-  const { user } = useAuth();
   const { t } = useT();
 
   if (items.length === 0) return null;
@@ -22,11 +20,6 @@ export function ContinueSection() {
           </h2>
           <p className="mt-0.5 text-sm text-slate-500">{t("recents.subtitle")}</p>
         </div>
-        {!user && (
-          <p className="hidden max-w-xs text-right text-xs text-slate-500 sm:block">
-            {t("recents.signInPrompt")}
-          </p>
-        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
