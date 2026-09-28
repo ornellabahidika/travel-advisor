@@ -23,30 +23,38 @@ import {
   type TripDetailsResponse,
 } from "@/lib/types";
 import { toAirlineCode, toCityCode } from "@/lib/iata";
-import {
-  searchFlights as tpSearchFlights,
-  searchHotels as tpSearchHotels,
-  travelpayoutsConfigured,
-} from "@/lib/travelpayouts";
+import { clampToEstimate, estimateFlightTotal, estimateHotelNight, harvestNightlyPrices } from "@/lib/fareModel";
+import { searchFlightsSerp, searchHotelsSerp, serpapiConfigured } from "@/lib/serpapi";
+import { searchFlightsGoogle, searchHotelsGoogle } from "@/lib/googleTravel";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
 
-const CORE_PROMPT = `You are a senior travel planner. Given user constraints and live web data, produce the trip's core: overview, total estimated cost, 3-5 flight options (sorted cheapest first), 3-5 hotel options that fit the budget, 3-5 insider tips, and the best hero image index.
+const LOGISTICS_PROMPT = `You are a senior travel planner. Given user constraints and live web data, produce ONLY the requested logistics sections (flight options and/or hotel options, as listed in the schema).
 
 Rules:
-- Use the Tavily sources (categories "flights", "hotels", "activities", "tips") as ground truth for prices, airline names, hotel names, neighborhoods. Estimate conservatively when exact prices are missing.
-- Flights: prices are GROUP TOTAL for the stated number of travelers (per-person × travelers). Sort cheapest first. For each, set sourceIndex to the index of the Tavily "flights" source that best matches (for the "Book" link). Null if no good match.
-- Hotels: CRITICAL — only suggest hotels that REALLY EXIST and are very likely to be listed on Booking.com. Prefer well-known international chains (Marriott, Hilton, Hyatt, Accor/Sofitel/Mercure/Novotel/Ibis, IHG/Holiday Inn/Crowne Plaza, Kempinski, Radisson, Four Seasons, Mandarin Oriental, Hyatt Regency) or famously-listed independent hotels named in the Tavily "hotels" sources. NEVER invent plausible-sounding boutique names — they break the booking link. If unsure a property exists, prefer a chain. Must fit within roughly (budget - flights) / nights per night for the group. 1-2 travelers: one standard room. 3-4: one larger room, family room, or two standard. 5+: two rooms or apartment rental. Mention occupancy in highlights where relevant. For each, set sourceIndex to the best Tavily "hotels" source. imageIndex = index in the images array that visually represents the hotel, or null.
-- insiderTips: 3-5 specific non-generic tips ("avoid the metro at rush hour" beats "be respectful of local customs").
-- heroImageIndex: pick the single image index that best represents the destination.
-- Respect the user's constraints (dietary, pets, accessibility, etc.) literally.
+- Use the Tavily sources (categories "flights", "hotels") as ground truth for prices, airline names, hotel names, neighborhoods. Estimate conservatively when exact prices are missing.
+- Flights: prices are GROUP TOTAL for the stated number of travelers (per-person x travelers). Sort cheapest first. For each, set sourceIndex to the index of the Tavily "flights" source that best matches (for the "Book" link). Null if no good match.
+- Hotels: CRITICAL, only suggest hotels that REALLY EXIST and are very likely to be listed on Booking.com. Prefer well-known international chains (Marriott, Hilton, Hyatt, Accor/Sofitel/Mercure/Novotel/Ibis, IHG/Holiday Inn/Crowne Plaza, Kempinski, Radisson, Four Seasons, Mandarin Oriental) or famously-listed independents named in the Tavily "hotels" sources. NEVER invent plausible-sounding boutique names. If unsure a property exists, prefer a chain. Must fit within roughly (budget - flights) / nights per night for the group. 1-2 travelers: one standard room. 3-4: one larger room, family room, or two standard. 5+: two rooms or apartment rental. Mention occupancy in highlights where relevant. For each, set sourceIndex to the best Tavily "hotels" source. imageIndex = index in the images array that visually represents the hotel, or null.
+- Respect the user constraints (dietary, pets, accessibility, etc.) literally.
 
 Respond ONLY with the structured output.`;
 
-const ITINERARY_PROMPT = `You are a senior travel planner. Given user constraints and live web data, build ONLY the day-by-day itinerary.
+const NARRATIVE_PROMPT = `You are a senior travel planner. Given user constraints and live web data, produce ONLY: a trip overview, a total cost estimate, and the best hero image index. Keep it tight; this call gates first paint.
 
 Rules:
+- If the payload includes livePrices (real flight and hotel prices from a booking engine), your totalEstimate MUST be built on those real numbers: cheapest live flight total, plus a mid-range live hotel rate x nights, plus a realistic food/activities/local-transport allowance for this destination and party. Say in the breakdown which parts are live prices and which are estimated.
+- Without livePrices, estimate conservatively from the Tavily sources.
+- heroImageIndex: pick the single image index that best represents the destination.
+- overview: 2-3 sentences, specific to this user and trip.
+
+Respond ONLY with the structured output.`;
+
+const ITINERARY_PROMPT = `You are a senior travel planner. Given user constraints and live web data, build the day-by-day itinerary and 3-5 insider tips. BE CONCISE: every description is one sentence of at most 18 words; the itinerary must render fast.
+
+Rules:
+- insiderTips: 3-5 specific non-generic tips ("avoid the metro at rush hour" beats "be respectful of local customs"); each at most 20 words.
+- Exactly 3 activities per day.
 - Exactly one entry per day of the trip, starting day 1.
 - Each day has a theme and 3-4 activities spanning morning / afternoon / evening.
 - Be specific — real place names, neighborhoods, restaurants. Never generic ("visit a museum" is bad; "Museu Nacional do Azulejo in Beato" is good).
@@ -119,11 +127,8 @@ const GroupTripSchema = z.object({
   blurb: z.string(),
 });
 
-const CoreSchema = z.object({
+const NarrativeSchema = z.object({
   overview: z.string(),
-  insiderTips: z.array(z.string()),
-  flights: z.array(FlightSchema),
-  hotels: z.array(HotelSchema),
   totalEstimate: z.object({
     amount: z.number().int(),
     currency: z.string(),
@@ -132,8 +137,16 @@ const CoreSchema = z.object({
   heroImageIndex: z.number().int().nullable(),
 });
 
+const LogisticsBothSchema = z.object({
+  flights: z.array(FlightSchema),
+  hotels: z.array(HotelSchema),
+});
+const LogisticsFlightsSchema = z.object({ flights: z.array(FlightSchema) });
+const LogisticsHotelsSchema = z.object({ hotels: z.array(HotelSchema) });
+
 const ItineraryOutputSchema = z.object({
   itinerary: z.array(ItineraryDaySchema),
+  insiderTips: z.array(z.string()),
 });
 
 const GroupTripsOutputSchema = z.object({
@@ -241,31 +254,41 @@ export async function POST(req: Request): Promise<Response> {
   const destFull = `${input.name}, ${input.country}`;
   const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY });
 
+  const monthName = new Date(input.startDate).toLocaleString("en", { month: "long", year: "numeric", timeZone: "UTC" });
   const queries = [
     `flights from ${input.origin} to ${destFull} ${input.startDate} price airlines`,
     `best hotels in ${destFull} ${input.startDate} to ${input.endDate} under ${Math.round(input.budget / nights / 2)} ${input.currency} per night`,
     `top things to do in ${destFull} ${input.interests.slice(0, 3).join(", ")}`,
     `${destFull} travel tips insider local ${input.interests[0] ?? "food"}`,
+    `${input.name} hotel prices per night ${monthName}`,
   ];
 
-  let results;
-  try {
-    results = await Promise.all(
-      queries.map((q) =>
-        tavilyClient.search(q, {
-          searchDepth: "basic",
-          maxResults: 4,
-          includeImages: true,
-          includeImageDescriptions: true,
-          includeAnswer: false,
-        }),
-      ),
-    );
-  } catch (err) {
+  // Tolerate individual search failures: a trip plan with three of four
+  // categories beats a 502. Only fail when every query failed.
+  const settledSearches = await Promise.allSettled(
+    queries.map((q) =>
+      tavilyClient.search(q, {
+        searchDepth: "basic",
+        maxResults: 4,
+        includeImages: true,
+        includeImageDescriptions: true,
+        includeAnswer: false,
+      }),
+    ),
+  );
+  const results = settledSearches
+    .map((r) => (r.status === "fulfilled" ? r.value : null))
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+  if (results.length === 0) {
+    const firstErr = settledSearches[0];
     return Response.json(
       {
         ok: false,
-        error: `Search failed: ${err instanceof Error ? err.message : "unknown"}`,
+        error: `Search failed: ${
+          firstErr.status === "rejected" && firstErr.reason instanceof Error
+            ? firstErr.reason.message
+            : "all search queries failed"
+        }`,
       } satisfies TripDetailsResponse,
       { status: 502 },
     );
@@ -273,7 +296,10 @@ export async function POST(req: Request): Promise<Response> {
 
   const seenUrls = new Set<string>();
   const sources: { title: string; url: string; content: string; category: string }[] = [];
-  const labels = ["flights", "hotels", "activities", "tips"];
+  const labels = ["flights", "hotels", "activities", "tips", "hotel-prices"];
+  const fulfilledLabels = settledSearches
+    .map((r, i) => (r.status === "fulfilled" ? labels[i] : null))
+    .filter((l): l is string => l !== null);
   results.forEach((r, idx) => {
     for (const item of r.results ?? []) {
       if (!seenUrls.has(item.url)) {
@@ -282,7 +308,7 @@ export async function POST(req: Request): Promise<Response> {
           title: item.title,
           url: item.url,
           content: item.content?.slice(0, 1000) ?? "",
-          category: labels[idx],
+          category: fulfilledLabels[idx] ?? "tips",
         });
       }
     }
@@ -328,25 +354,38 @@ export async function POST(req: Request): Promise<Response> {
   // flight + hotel data is usually already in. If TP returns empty (city
   // unknown to Aviasales / no token / network issue), we fall back to
   // Claude's LLM-generated estimates.
-  const tpFlightsPromise: Promise<FlightOption[]> = travelpayoutsConfigured()
-    ? tpSearchFlights(
-        input.origin,
-        destFull,
-        input.startDate,
-        input.endDate,
-        input.currency,
-      ).catch(() => [])
-    : Promise.resolve([]);
+  // The price ladder, cleanest source first:
+  //   1. SerpAPI (real Google Flights/Hotels results, needs SERPAPI_KEY)
+  //   2. Direct Google fallback (free, best-effort, kill switch
+  //      GOOGLE_TRAVEL_FALLBACK=off)
+  //   3. Callers fall through to the deterministic model + clamped LLM.
+  const tpFlightsPromise: Promise<FlightOption[]> = (async () => {
+    if (serpapiConfigured()) {
+      const f = await searchFlightsSerp(
+        input.origin, destFull, input.startDate, input.endDate,
+        input.currency, input.travelers,
+      ).catch(() => [] as FlightOption[]);
+      if (f.length > 0) return f;
+    }
+    return searchFlightsGoogle(
+      input.origin, destFull, input.startDate, input.endDate,
+      input.currency, input.travelers,
+    ).catch(() => [] as FlightOption[]);
+  })();
 
-  const tpHotelsPromise: Promise<HotelOption[]> = travelpayoutsConfigured()
-    ? tpSearchHotels(
-        destFull,
-        input.startDate,
-        input.endDate,
-        input.travelers,
-        input.currency,
-      ).catch(() => [])
-    : Promise.resolve([]);
+  const tpHotelsPromise: Promise<HotelOption[]> = (async () => {
+    if (serpapiConfigured()) {
+      const h = await searchHotelsSerp(
+        destFull, input.startDate, input.endDate,
+        input.travelers, input.currency,
+      ).catch(() => [] as HotelOption[]);
+      if (h.length > 0) return h;
+    }
+    return searchHotelsGoogle(
+      destFull, input.startDate, input.endDate,
+      input.travelers, input.currency,
+    ).catch(() => [] as HotelOption[]);
+  })();
 
 
   // Stream three independent Claude calls. As each one returns, the client
@@ -381,42 +420,157 @@ export async function POST(req: Request): Promise<Response> {
         groupTrips: mockGroupTrips(input),
       });
 
-      const corePromise = anthropic.messages
-        .parse({
-          model: "claude-haiku-4-5",
-          max_tokens: 4096,
-          output_config: { format: zodOutputFormat(CoreSchema) },
+      // Real prices first: wait briefly for Travelpayouts so the model
+      // calls can (a) skip sections we already have live data for and
+      // (b) ground the total estimate in real numbers. Bounded so a slow
+      // TP never delays the page by more than ~2.5s.
+      const withTimeout = <T,>(pr: Promise<T>, ms: number, fallback: T): Promise<T> =>
+        Promise.race([
+          pr,
+          new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+        ]);
+      const [tpFlights, tpHotels, fareAnchor] = await Promise.all([
+        withTimeout(tpFlightsPromise, 4500, [] as FlightOption[]),
+        withTimeout(tpHotelsPromise, 4500, [] as HotelOption[]),
+        estimateFlightTotal(
+          input.origin,
+          destFull,
+          input.startDate,
+          input.travelers,
+          input.currency,
+        ).catch(() => null),
+      ]);
+      // Prefer prices actually observed on the web this month (aggregator
+      // search snippets) over the static country tier; the tier remains the
+      // fallback when the harvest finds too few plausible figures.
+      const harvested = harvestNightlyPrices(
+        sources
+          .filter((s) => s.category === "hotel-prices" || s.category === "hotels")
+          .map((s) => `${s.title} ${s.content}`),
+        input.currency,
+      );
+      const tierAnchor = estimateHotelNight(
+        input.country,
+        input.travelers,
+        input.currency,
+      );
+      const roomFactor = input.travelers >= 5 ? 2 : input.travelers >= 3 ? 1.25 : 1;
+      const hotelAnchor = harvested
+        ? Math.round((harvested.perNight * roomFactor) / 5) * 5
+        : tierAnchor;
+      const needFlights = tpFlights.length === 0;
+      const needHotels = tpHotels.length === 0;
+
+      // One retry on transient model failures.
+      const parseWithRetry = async <T,>(fn: () => Promise<T>): Promise<T> => {
+        try {
+          return await fn();
+        } catch {
+          return await fn();
+        }
+      };
+
+      const narrativePayload = {
+        ...payload,
+        // Deterministic distance-and-season model, for grounding the total
+        // when no live prices exist. Not a live quote.
+        modelledPriceAnchor: fareAnchor
+          ? {
+              roundTripFlightTotalForGroup: fareAnchor.amount,
+              typicalHotelPerNightForGroup: hotelAnchor,
+              currency: fareAnchor.currency,
+              note: harvested
+                ? "flight from distance-and-season model; hotel median observed in current web prices"
+                : "distance-and-season model, not a live quote",
+            }
+          : null,
+        livePrices:
+          tpFlights.length > 0 || tpHotels.length > 0
+            ? {
+                flights: tpFlights.slice(0, 3).map((f) => ({
+                  airline: f.airline,
+                  totalPriceForAllTravelersRoundTrip: f.approxPrice,
+                  currency: f.currency,
+                  stops: f.stops,
+                })),
+                note: `Flight prices above are ALREADY the round-trip total for all ${input.travelers} traveler(s) combined. Do NOT multiply them by travelers again.`,
+                hotelsPerNight: tpHotels.slice(0, 5).map((h) => ({
+                  name: h.name,
+                  pricePerNight: h.approxPricePerNight,
+                  currency: h.currency,
+                })),
+              }
+            : null,
+      };
+
+      const narrativePromise = parseWithRetry(() =>
+        anthropic.messages.parse({
+          model: "claude-sonnet-5",
+          max_tokens: 900,
+          output_config: { format: zodOutputFormat(NarrativeSchema) },
           system: [
-            { type: "text", text: CORE_PROMPT, cache_control: { type: "ephemeral" } },
+            { type: "text", text: NARRATIVE_PROMPT, cache_control: { type: "ephemeral" } },
           ],
-          messages: [{ role: "user", content: userContent }],
-        })
-        .then(async (res) => {
-          const core = res.parsed_output;
-          if (!core) throw new Error("Empty core response");
+          messages: [
+            {
+              role: "user",
+              content: `Use the live search data below.\n\n${JSON.stringify(narrativePayload)}`,
+            },
+          ],
+        }),
+      );
 
-          // Await Travelpayouts results — they almost always finish before
-          // Claude's core call (1-3s vs ~25s), but cap at 2s extra after
-          // core just in case TP is slow, so we never delay user too long.
-          const withTimeout = <T,>(p: Promise<T>, ms: number, fallback: T): Promise<T> =>
-            Promise.race([
-              p,
-              new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-            ]);
-          const [tpFlights, tpHotels] = await Promise.all([
-            withTimeout(tpFlightsPromise, 2000, [] as FlightOption[]),
-            withTimeout(tpHotelsPromise, 2000, [] as HotelOption[]),
-          ]);
+      // Only ask the model for logistics sections Travelpayouts could not
+      // supply. When both are live, skip the call entirely.
+      const logisticsSchema = needFlights && needHotels
+        ? LogisticsBothSchema
+        : needFlights
+          ? LogisticsFlightsSchema
+          : LogisticsHotelsSchema;
+      const logisticsPromise: Promise<{
+        flights?: z.infer<typeof FlightSchema>[];
+        hotels?: z.infer<typeof HotelSchema>[];
+      } | null> =
+        needFlights || needHotels
+          ? parseWithRetry(() =>
+              anthropic.messages.parse({
+                model: "claude-sonnet-5",
+                max_tokens: 3200,
+                output_config: { format: zodOutputFormat(logisticsSchema) },
+                system: [
+                  {
+                    type: "text",
+                    text: LOGISTICS_PROMPT,
+                    cache_control: { type: "ephemeral" },
+                  },
+                ],
+                messages: [{ role: "user", content: userContent }],
+              }),
+            ).then((res) => res.parsed_output as {
+              flights?: z.infer<typeof FlightSchema>[];
+              hotels?: z.infer<typeof HotelSchema>[];
+            } | null).catch((err) => {
+              console.error("[trip-details] logistics call failed:", err instanceof Error ? err.message : err);
+              return null;
+            })
+          : Promise.resolve(null);
 
-          // Flights: prefer live Travelpayouts results; fall back to LLM.
+      const corePromise = Promise.all([narrativePromise, logisticsPromise]).then(
+        ([narrativeRes, logistics]) => {
+          const core = narrativeRes.parsed_output;
+          if (!core) throw new Error("Empty narrative response");
+
           const flights: FlightOption[] =
             tpFlights.length > 0
               ? tpFlights
-              : [...core.flights]
+              : [...(logistics?.flights ?? [])]
                   .sort((a, b) => a.approxPrice - b.approxPrice)
                   .map((f) => ({
                     airline: f.airline,
-                    approxPrice: f.approxPrice,
+                    approxPrice: clampToEstimate(
+                      f.approxPrice,
+                      fareAnchor?.amount ?? null,
+                    ),
                     currency: f.currency,
                     durationHours: f.durationHours,
                     stops: f.stops,
@@ -430,14 +584,18 @@ export async function POST(req: Request): Promise<Response> {
                     ),
                   }));
 
-          // Hotels: prefer live Travelpayouts results; fall back to LLM.
           const hotels: HotelOption[] =
             tpHotels.length > 0
               ? tpHotels
-              : core.hotels.map((h) => ({
+              : (logistics?.hotels ?? []).map((h) => ({
                   name: h.name,
                   area: h.area,
-                  approxPricePerNight: h.approxPricePerNight,
+                  approxPricePerNight: clampToEstimate(
+                    h.approxPricePerNight,
+                    hotelAnchor,
+                    0.5,
+                    2.2,
+                  ),
                   currency: h.currency,
                   ratingOutOf5: h.ratingOutOf5,
                   highlights: h.highlights,
@@ -456,33 +614,90 @@ export async function POST(req: Request): Promise<Response> {
                       : null,
                 }));
 
+          // Budget breakdown from the REAL numbers on this page, so the
+          // chart can never contradict the flight and hotel cards above it.
+          const cheapestFlight = flights.length > 0 ? flights[0].approxPrice : null;
+          const midHotel =
+            hotels.length > 0
+              ? [...hotels].sort(
+                  (a, b) => a.approxPricePerNight - b.approxPricePerNight,
+                )[Math.floor(hotels.length / 2)].approxPricePerNight
+              : null;
+          const flightsAmt = cheapestFlight ?? Math.round(core.totalEstimate.amount * 0.35);
+          const lodgingAmt = (midHotel ?? Math.round((core.totalEstimate.amount * 0.3) / nights)) * nights;
+          const rest = Math.max(0, core.totalEstimate.amount - flightsAmt - lodgingAmt);
+          const bd = {
+            currency: core.totalEstimate.currency,
+            total: flightsAmt + lodgingAmt + rest,
+            perPerson: Math.round((flightsAmt + lodgingAmt + rest) / Math.max(1, input.travelers)),
+            items: [
+              {
+                category: "flights" as const,
+                amount: flightsAmt,
+                note: cheapestFlight
+                  ? "Cheapest live round-trip fare shown above"
+                  : "Modelled estimate",
+              },
+              {
+                category: "lodging" as const,
+                amount: lodgingAmt,
+                note: midHotel
+                  ? `Mid-range live rate x ${nights} nights`
+                  : "Modelled estimate",
+              },
+              { category: "food" as const, amount: Math.round(rest * 0.45), note: "Allowance" },
+              { category: "activities" as const, amount: Math.round(rest * 0.3), note: "Allowance" },
+              { category: "transport" as const, amount: Math.round(rest * 0.15), note: "Local transit allowance" },
+              { category: "misc" as const, amount: Math.round(rest * 0.1), note: "Buffer" },
+            ],
+          };
+
           send("core", {
+            budgetBreakdown: bd,
             heroImage:
-              core.heroImageIndex !== null && core.heroImageIndex < images.length
+              core.heroImageIndex !== null &&
+              core.heroImageIndex >= 0 &&
+              core.heroImageIndex < images.length
                 ? images[core.heroImageIndex]?.url ?? null
                 : images[0]?.url ?? null,
             overview: core.overview,
-            insiderTips: core.insiderTips,
+            insiderTips: [],
             totalEstimate: core.totalEstimate,
             flights,
             hotels,
           });
-        });
+        },
+      );
 
-      const itineraryPromise = anthropic.messages
-        .parse({
+      // Itinerary is list assembly, not judgment: the fast model with a
+      // brevity contract beats the big model taking 45 seconds.
+      const itineraryPromise = parseWithRetry(() =>
+        anthropic.messages.parse({
           model: "claude-haiku-4-5",
-          max_tokens: 4096,
+          max_tokens: 4000,
           output_config: { format: zodOutputFormat(ItineraryOutputSchema) },
           system: [
             { type: "text", text: ITINERARY_PROMPT, cache_control: { type: "ephemeral" } },
           ],
           messages: [{ role: "user", content: userContent }],
-        })
+        }),
+      )
         .then((res) => {
           const itinerary = res.parsed_output;
           if (!itinerary) throw new Error("Empty itinerary response");
-          send("itinerary", { itinerary: itinerary.itinerary });
+          send("itinerary", {
+            itinerary: itinerary.itinerary,
+            insiderTips: itinerary.insiderTips ?? [],
+          });
+        })
+        .catch((err) => {
+          console.error(
+            "[trip-details] itinerary failed:",
+            err instanceof Error ? err.message : err,
+          );
+          // Tell the client to stop the spinner; the rest of the page works.
+          send("itinerary", { itinerary: [], insiderTips: [] });
+          throw err;
         });
 
       const settled = await Promise.allSettled([corePromise, itineraryPromise]);

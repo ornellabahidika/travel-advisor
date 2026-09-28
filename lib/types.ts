@@ -25,7 +25,7 @@ export type Destination = {
   counterSuggestion?: { name: string; reason: string };
   estimatedCost: { amount: number; currency: string; note: string };
   bestTimeNote: string;
-  flightEstimate: { amount: number; currency: string; airline: string };
+  flightEstimate: { amount: number; currency: string; airline: string; live?: boolean };
   hotelNightEstimate: { amount: number; currency: string };
   images: { url: string; alt: string }[];
   sources: { title: string; url: string }[];

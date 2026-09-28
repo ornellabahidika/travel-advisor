@@ -222,6 +222,26 @@ export function Advisor() {
               firstSeen = true;
               setLoading(false);
             }
+          } else if (eventName === "priceUpdate") {
+            // Better price data landed after the card rendered (live
+            // booking-engine quote, or the deterministic distance model
+            // correcting an implausible guess): patch the card in place.
+            const { index, flightEstimate, hotelNightEstimate } = payload as {
+              index: number;
+              flightEstimate?: Destination["flightEstimate"];
+              hotelNightEstimate?: Destination["hotelNightEstimate"];
+            };
+            setDestinations((prev) =>
+              prev.map((d, i) =>
+                i === index
+                  ? {
+                      ...d,
+                      ...(flightEstimate ? { flightEstimate } : {}),
+                      ...(hotelNightEstimate ? { hotelNightEstimate } : {}),
+                    }
+                  : d,
+              ),
+            );
           } else if (eventName === "done") {
             const { reasoning } = payload as { reasoning: string };
             setReasoning(reasoning);

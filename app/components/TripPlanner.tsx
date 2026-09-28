@@ -255,11 +255,33 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
               baseData = payload as Base;
               tryRender();
             } else if (eventName === "core") {
-              coreData = payload as Core;
+              const p2 = payload as Core & {
+                budgetBreakdown?: TripDetails["budgetBreakdown"];
+              };
+              coreData = p2;
+              if (p2.budgetBreakdown && baseData) {
+                baseData = {
+                  ...(baseData as Base),
+                  budgetBreakdown: p2.budgetBreakdown,
+                };
+              }
               tryRender();
             } else if (eventName === "itinerary") {
-              const { itinerary } = payload as { itinerary: TripDetails["itinerary"] };
-              setDetails((prev) => (prev ? { ...prev, itinerary } : prev));
+              const { itinerary, insiderTips } = payload as {
+                itinerary: TripDetails["itinerary"];
+                insiderTips?: string[];
+              };
+              setDetails((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      itinerary,
+                      ...(insiderTips && insiderTips.length > 0
+                        ? { insiderTips }
+                        : {}),
+                    }
+                  : prev,
+              );
               setLoadingItinerary(false);
             } else if (eventName === "error") {
               const { message } = payload as { message: string };
@@ -478,7 +500,7 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             title={t("trip.flights")}
             subtitle={
               details.flights[0]?.isLive
-                ? `${t("trip.cheapestFirst")} · Live prices via Travelpayouts`
+                ? `${t("trip.cheapestFirst")} · Live prices`
                 : `${t("trip.cheapestFirst")} · Prices are estimates — click "See live prices" to compare on momondo`
             }
             badge={`${details.flights.length} options`}
@@ -567,7 +589,7 @@ export function TripPlanner({ input }: { input: TripDetailsInput }) {
             title={t("trip.hotels")}
             subtitle={
               details.hotels[0]?.isLive
-                ? `${t("trip.perNight")} · Live prices via Travelpayouts`
+                ? `${t("trip.perNight")} · Live prices`
                 : `${t("trip.perNight")} · Prices are estimates — click "See live prices" to compare on Booking.com`
             }
             badge={`${details.hotels.length} stays`}
@@ -1074,7 +1096,8 @@ function BudgetBreakdownCard({
       {/* Stacked segmented bar */}
       <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-slate-100">
         {breakdown.items.map((item) => {
-          const style = BUDGET_STYLE[item.category];
+          // Unknown category must never crash the page; fall back to misc.
+          const style = BUDGET_STYLE[item.category] ?? BUDGET_STYLE.misc;
           const pct = (item.amount / breakdown.total) * 100;
           return (
             <div
@@ -1090,7 +1113,7 @@ function BudgetBreakdownCard({
       {/* Compact 2-column legend */}
       <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2">
         {breakdown.items.map((item) => {
-          const style = BUDGET_STYLE[item.category];
+          const style = BUDGET_STYLE[item.category] ?? BUDGET_STYLE.misc;
           const Icon = style.icon;
           const pct = Math.round((item.amount / breakdown.total) * 100);
           return (

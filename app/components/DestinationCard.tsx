@@ -16,6 +16,20 @@ import { useFavorites } from "@/lib/favorites";
 import { useT } from "@/lib/language";
 import { track } from "@/lib/analytics";
 
+// Format money in the estimate's own currency ("$1,200", "€950", "CA$800").
+// The previous hardcoded "$" showed dollar signs on EUR/GBP/JPY amounts.
+function money(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat("en", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toLocaleString()}`;
+  }
+}
+
 export function DestinationCard({
   destination,
   tripHref,
@@ -129,13 +143,25 @@ export function DestinationCard({
         <div className="flex items-center gap-3 text-xs text-slate-700">
           <span className="flex items-center gap-1">
             <Plane className="h-3.5 w-3.5 text-[#00aa6c]" />
-            {destination.flightEstimate.airline} · $
-            {destination.flightEstimate.amount.toLocaleString()}
+            {destination.flightEstimate.airline} ·{" "}
+            {money(
+              destination.flightEstimate.amount,
+              destination.flightEstimate.currency,
+            )}
+            {destination.flightEstimate.live && (
+              <span className="ml-1 rounded bg-emerald-100 px-1 py-0.5 text-[10px] font-bold text-emerald-700">
+                LIVE
+              </span>
+            )}
           </span>
           <span className="text-slate-300">·</span>
           <span className="flex items-center gap-1">
             <Hotel className="h-3.5 w-3.5 text-[#00aa6c]" />
-            ${destination.hotelNightEstimate.amount.toLocaleString()}/night
+            {money(
+              destination.hotelNightEstimate.amount,
+              destination.hotelNightEstimate.currency,
+            )}
+            /night
           </span>
         </div>
 
@@ -157,7 +183,10 @@ export function DestinationCard({
           <div>
             <div className="text-xs text-slate-500">{t("card.tripFrom")}</div>
             <div className="text-2xl font-black text-slate-900">
-              ${destination.estimatedCost.amount.toLocaleString()}
+              {money(
+                destination.estimatedCost.amount,
+                destination.estimatedCost.currency,
+              )}
             </div>
             <div className="text-xs text-slate-500">
               {destination.estimatedCost.note}

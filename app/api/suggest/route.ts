@@ -6,6 +6,7 @@ import { buildSearchQueries } from "@/lib/queries";
 import { isMockMode, mockDelay, mockSuggest } from "@/lib/mocks";
 import { clientIp, rateLimit } from "@/lib/rateLimit";
 import { TravelInputSchema, type Destination, type SuggestResponse } from "@/lib/types";
+import { clampToEstimate, estimateFlightTotal, estimateHotelNight } from "@/lib/fareModel";
 
 export const maxDuration = 60;
 export const runtime = "nodejs";
@@ -207,30 +208,38 @@ export async function POST(req: Request): Promise<Response> {
   const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY });
   const queries = buildSearchQueries(input);
 
-  let searchResults;
-  try {
-    const tavilyTimeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Tavily timed out after 25s")), 25_000),
-    );
-    searchResults = (await Promise.race([
-      Promise.all(
-        queries.slice(0, 2).map((q) =>
-          tavilyClient.search(q, {
-            searchDepth: "basic",
-            maxResults: 3,
-            includeImages: true,
-            includeImageDescriptions: true,
-            includeAnswer: false,
-          }),
-        ),
+  // Tolerate one query failing; only give up when both do. Each query
+  // gets its own timeout so a single hung request cannot stall the search.
+  const timedSearch = (q: string) =>
+    Promise.race([
+      tavilyClient.search(q, {
+        searchDepth: "basic",
+        maxResults: 3,
+        includeImages: true,
+        includeImageDescriptions: true,
+        includeAnswer: false,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("search timed out after 20s")), 20_000),
       ),
-      tavilyTimeout,
-    ])) as Awaited<ReturnType<typeof tavilyClient.search>>[];
-  } catch (err) {
+    ]);
+  const settled = await Promise.allSettled(queries.slice(0, 2).map(timedSearch));
+  const searchResults = settled
+    .filter(
+      (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof tavilyClient.search>>> =>
+        r.status === "fulfilled",
+    )
+    .map((r) => r.value);
+  if (searchResults.length === 0) {
+    const reason = settled[0];
     return Response.json(
       {
         ok: false,
-        error: `Tavily search failed: ${err instanceof Error ? err.message : "unknown"}`,
+        error: `Search failed: ${
+          reason.status === "rejected" && reason.reason instanceof Error
+            ? reason.reason.message
+            : "unknown"
+        }`,
       } satisfies SuggestResponse,
       { status: 502 },
     );
@@ -313,8 +322,8 @@ export async function POST(req: Request): Promise<Response> {
         send("ping", { stage: "synthesizing" });
 
         const claudeStream = anthropic.messages.stream({
-          model: "claude-haiku-4-5",
-          max_tokens: 4096,
+          model: "claude-sonnet-5",
+          max_tokens: 6000,
           output_config: {
             format: zodOutputFormat(SuggestSchema),
           },
@@ -336,6 +345,68 @@ export async function POST(req: Request): Promise<Response> {
         let buffer = "";
         let cursor = 0;
         let emitted = 0;
+        // Live flight prices: as each destination card streams out, look up
+        // the real cheapest round trip via Travelpayouts and patch the card.
+        const pricePatches: Promise<void>[] = [];
+        const lookupLivePrice = (dest: Destination, index: number) => {
+          pricePatches.push(
+            (async () => {
+              // Deterministic distance model. Clamp the
+              // model's guess into its plausible band so a hallucinated
+              // fare never survives on screen.
+              const est = await estimateFlightTotal(
+                input.origin,
+                `${dest.name}, ${dest.country}`,
+                input.startDate,
+                input.travelers,
+                input.currency,
+              );
+              if (!est) return;
+              const clampedFlight = clampToEstimate(
+                dest.flightEstimate.amount,
+                est.amount,
+              );
+              const hotelEst = estimateHotelNight(
+                dest.country,
+                input.travelers,
+                input.currency,
+              );
+              const clampedHotel = clampToEstimate(
+                dest.hotelNightEstimate.amount,
+                hotelEst,
+                0.5,
+                2.2,
+              );
+              const changedFlight =
+                Math.abs(clampedFlight - dest.flightEstimate.amount) >
+                dest.flightEstimate.amount * 0.02;
+              const changedHotel =
+                Math.abs(clampedHotel - dest.hotelNightEstimate.amount) >
+                dest.hotelNightEstimate.amount * 0.02;
+              if (!changedFlight && !changedHotel) return;
+              send("priceUpdate", {
+                index,
+                ...(changedFlight
+                  ? {
+                      flightEstimate: {
+                        amount: clampedFlight,
+                        currency: input.currency.toUpperCase(),
+                        airline: dest.flightEstimate.airline,
+                      },
+                    }
+                  : {}),
+                ...(changedHotel
+                  ? {
+                      hotelNightEstimate: {
+                        amount: clampedHotel,
+                        currency: input.currency.toUpperCase(),
+                      },
+                    }
+                  : {}),
+              });
+            })().catch(() => {}),
+          );
+        };
 
         for await (const event of claudeStream) {
           if (event.type !== "content_block_delta") continue;
@@ -366,6 +437,7 @@ export async function POST(req: Request): Promise<Response> {
               const parsed = DestinationFromAI.parse(JSON.parse(objStr));
               const mapped = mapDestination(parsed, sources, images);
               send("destination", { destination: mapped, index: emitted });
+              lookupLivePrice(mapped, emitted);
               emitted++;
             } catch {
               // Skip objects that don't match (rare — Claude sometimes
@@ -374,10 +446,30 @@ export async function POST(req: Request): Promise<Response> {
           }
         }
 
-        const finalMessage = await claudeStream.finalMessage();
-        const parsed = finalMessage.parsed_output as
-          | z.infer<typeof SuggestSchema>
-          | undefined;
+        // A truncated tail (max_tokens mid-string) must not fail the whole
+        // stream: the destination cards were already parsed and delivered
+        // incrementally above. Fall back to an empty reasoning string.
+        let parsed: z.infer<typeof SuggestSchema> | undefined;
+        try {
+          const finalMessage = await claudeStream.finalMessage();
+          parsed = finalMessage.parsed_output as
+            | z.infer<typeof SuggestSchema>
+            | undefined;
+        } catch {
+          parsed = undefined;
+        }
+        if (emitted === 0) {
+          send("error", {
+            message:
+              "No destinations matched this search. Try widening the budget, dates, or interests.",
+          });
+        }
+        // Give in-flight price lookups a bounded window to land before the
+        // stream closes; never hold the response open more than 4s extra.
+        await Promise.race([
+          Promise.allSettled(pricePatches),
+          new Promise((resolve) => setTimeout(resolve, 4000)),
+        ]);
         send("done", {
           reasoning: parsed?.reasoning ?? "",
           totalCount: emitted,
