@@ -75,9 +75,6 @@ export async function searchFlightsSerp(
     if (data.error) return [];
     const items = [...(data.best_flights ?? []), ...(data.other_flights ?? [])];
     if (items.length === 0) return [];
-    const fallbackUrl = `https://www.google.com/travel/flights?q=${encodeURIComponent(
-      `flights from ${originCode} to ${destCode} ${startDate} ${endDate}`,
-    )}`;
     return items
       .filter((f) => typeof f.price === "number" && f.price > 0)
       .slice(0, 5)
@@ -102,7 +99,14 @@ export async function searchFlightsSerp(
             group > 1
               ? `Round trip, total for ${group} travelers (Google Flights)`
               : "Round trip (Google Flights)",
-          bookingUrl: data.search_metadata?.google_flights_url ?? fallbackUrl,
+          // Per-flight URL: Google Flights filters by airline when the
+          // carrier name is in the query, so clicking "Delta $450" lands
+          // on Delta's row rather than the shared batch URL from
+          // search_metadata (which was the same for every flight card
+          // and often didn't surface the card the user clicked).
+          bookingUrl: `https://www.google.com/travel/flights?q=${encodeURIComponent(
+            `flights from ${originCode} to ${destCode} on ${airline} ${startDate} return ${endDate}`,
+          )}&hl=en&curr=USD`,
           isLive: true,
         } satisfies FlightOption;
       })

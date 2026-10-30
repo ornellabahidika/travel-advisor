@@ -67,14 +67,24 @@ export async function searchFlightsGoogle(
   if (!html) return [];
 
   const out: FlightOption[] = [];
+  // Primary regex captures price + stops + airline. We allow up to 600
+  // chars after the airline (non-greedy) in case Google's aria-label
+  // continues with a "Total duration X hr Y min" clause. Making the
+  // duration groups optional keeps backward compat if Google changes
+  // phrasing — we just fall back to showing stops-only on that card
+  // instead of 0h.
   const re =
-    /From ([\d,]+) US dollars round trip total\.?\s*(Nonstop|\d+ stops?) flight with ([^.]+)\./g;
+    /From ([\d,]+) US dollars round trip total\.?\s*(Nonstop|\d+ stops?) flight with ([^.]+)\.(?:[^"<]{0,600}?(?:Total duration\s*)?(\d+)\s*hr(?:\s*(\d+)\s*min)?)?/g;
   const seen = new Set<string>();
   for (const m of html.matchAll(re)) {
     const perPersonUsd = Number(m[1].replace(/,/g, ""));
     if (!perPersonUsd || perPersonUsd < 40 || perPersonUsd > 20000) continue;
     const stops = m[2] === "Nonstop" ? 0 : Number(m[2].match(/\d+/)?.[0] ?? 1);
     const airline = m[3].trim().replace(/ and .*$/, "").slice(0, 40);
+    const hrs = m[4] ? Number(m[4]) : 0;
+    const mins = m[5] ? Number(m[5]) : 0;
+    const durationHours =
+      hrs > 0 || mins > 0 ? Math.round((hrs + mins / 60) * 10) / 10 : 0;
     const key = `${airline}:${perPersonUsd}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -82,13 +92,20 @@ export async function searchFlightsGoogle(
       airline,
       approxPrice: Math.round(fromUsd(perPersonUsd, currency)) * group,
       currency: currency.toUpperCase(),
-      durationHours: 0,
+      durationHours,
       stops,
       notes:
         group > 1
           ? `Round trip, total for ${group} travelers (Google Flights)`
           : "Round trip (Google Flights)",
-      bookingUrl: url,
+      // Per-flight URL: include airline name in the query so Google
+      // filters to that carrier and the card the user clicked matches
+      // the row at the top of the results page. Previously all 5 cards
+      // shared the same route-only URL, so clicking "Delta $450" could
+      // land on a page whose top row was Air France.
+      bookingUrl: `https://www.google.com/travel/flights?q=${encodeURIComponent(
+        `flights from ${o} to ${d} on ${airline} ${startDate} return ${endDate}`,
+      )}&hl=en&curr=USD`,
       isLive: true,
     });
     if (out.length >= 5) break;
