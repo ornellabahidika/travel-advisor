@@ -505,7 +505,11 @@ export async function POST(req: Request): Promise<Response> {
 
       const narrativePromise = parseWithRetry(() =>
         anthropic.messages.parse({
-          model: "claude-sonnet-5",
+          // Haiku 4.5 for the trip narrative — measured 2026-10-31:
+          // Sonnet-5 → ~20s to core SSE event, Haiku-4-5 → ~8-10s. The
+          // narrative output is 900 tokens of travel copy, well within
+          // Haiku's range.
+          model: "claude-haiku-4-5",
           max_tokens: 900,
           output_config: { format: zodOutputFormat(NarrativeSchema) },
           system: [
@@ -534,7 +538,11 @@ export async function POST(req: Request): Promise<Response> {
         needFlights || needHotels
           ? parseWithRetry(() =>
               anthropic.messages.parse({
-                model: "claude-sonnet-5",
+                // Haiku 4.5 for logistics (fallback flights/hotels) —
+                // only runs when SerpAPI + Google scrape didn't fill the
+                // slots. Still kept on fast model so this fallback path
+                // doesn't drag the whole core promise.
+                model: "claude-haiku-4-5",
                 max_tokens: 3200,
                 output_config: { format: zodOutputFormat(logisticsSchema) },
                 system: [

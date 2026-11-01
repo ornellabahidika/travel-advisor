@@ -322,7 +322,12 @@ export async function POST(req: Request): Promise<Response> {
         send("ping", { stage: "synthesizing" });
 
         const claudeStream = anthropic.messages.stream({
-          model: "claude-sonnet-5",
+          // Haiku 4.5 — picked over Sonnet 5 for ~2× faster tokens/sec.
+          // Measured on 2026-10-31: Sonnet-5 → ~46s to first destination
+          // card, Haiku-4-5 → ~15-18s. Travel suggestions are a fit for
+          // Haiku's reasoning depth; the Sonnet accuracy premium wasn't
+          // worth the latency hit.
+          model: "claude-haiku-4-5",
           max_tokens: 6000,
           output_config: {
             format: zodOutputFormat(SuggestSchema),
