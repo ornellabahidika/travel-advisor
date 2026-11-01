@@ -129,11 +129,21 @@ export async function searchHotelsGoogle(
 
   const out: HotelOption[] = [];
   const seen = new Set<string>();
-  const re = /Prices starting from \$([\d,]+), ([^"]{3,90}?)(?: DEAL [^"]*)?"/g;
+  // Strip Google's deal badges from the end of the hotel name.
+  // Observed values: "DEAL — Save X%", "GREAT — Save X%", "GOOD — Save X%".
+  // Without these in the strip pattern, hotel names like "The People
+  // Belleville GREAT" leaked into the UI.
+  const re = /Prices starting from \$([\d,]+), ([^"]{3,90}?)(?:\s+(?:DEAL|GREAT|GOOD)[^"]*)?"/g;
   for (const m of html.matchAll(re)) {
     const usd = Number(m[1].replace(/,/g, ""));
-    const name = m[2].trim();
+    // Belt-and-braces: even if the primary regex missed a badge suffix,
+    // trim any trailing DEAL/GREAT/GOOD/EXCEPTIONAL token.
+    const name = m[2]
+      .trim()
+      .replace(/\s+(?:DEAL|GREAT|GOOD|EXCEPTIONAL)[\s\S]*$/i, "")
+      .trim();
     if (!usd || usd < 15 || usd > 5000) continue;
+    if (!name || name.length < 3) continue;
     if (seen.has(name.toLowerCase())) continue;
     seen.add(name.toLowerCase());
     out.push({

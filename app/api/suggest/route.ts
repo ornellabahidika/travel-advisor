@@ -24,6 +24,7 @@ For EACH destination, you MUST also provide:
 - hotelNightEstimate: Approximate nightly accommodation cost for the group. 1-2 travelers: one standard room. 3-4: one larger room or two standard. 5+: likely two rooms or an apartment rental — adjust accordingly.
 
 You must:
+- "name" is the destination city or region only (e.g., "Playa del Carmen", "Goa", "Tulum") — NEVER include the country in "name". The country goes in the separate "country" field. If you include "name": "Playa del Carmen, Mexico" the UI will display "Playa del Carmen, Mexico · Mexico" which looks broken.
 - Only cite source indices that exist in the provided "sources" array.
 - Only reference image indices that exist in the provided "images" array.
 - Pick images that visually represent the destination (use the description field).
@@ -147,8 +148,16 @@ function mapDestination(
     .filter((i) => i >= 0 && i < sources.length)
     .slice(0, 5)
     .map((i) => ({ title: sources[i].title, url: sources[i].url }));
+  // Belt-and-braces: if the model included the country in the name
+  // despite the prompt, strip it so the card doesn't render as
+  // "City, Country · Country". Match the trailing ", <country>" exactly.
+  const countryTrim = d.country.trim();
+  let cleanName = d.name.trim();
+  if (countryTrim && cleanName.toLowerCase().endsWith(`, ${countryTrim.toLowerCase()}`)) {
+    cleanName = cleanName.slice(0, -(countryTrim.length + 2)).trim();
+  }
   return {
-    name: d.name,
+    name: cleanName,
     country: d.country,
     matchScore: Math.max(0, Math.min(100, d.matchScore)),
     whyItMatches: d.whyItMatches,
